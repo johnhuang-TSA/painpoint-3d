@@ -27,9 +27,26 @@
   #clock3d{position:fixed;right:7%;top:14vh;z-index:11;font-family:"Consolas",monospace;font-size:min(3vw,3.4vh);
     letter-spacing:.1em;color:#7fa0c4;opacity:0;}
 
-  #prog{position:fixed;left:12%;right:12%;bottom:5%;height:.32vh;background:rgba(255,255,255,.08);border-radius:2px;z-index:15;opacity:0;transition:opacity .6s;}
-  #prog i{display:block;height:100%;width:0;background:rgba(220,235,250,.6);border-radius:2px;}
-  #endhint{position:fixed;left:0;right:0;bottom:5.4%;text-align:center;z-index:15;font-size:min(1.3vw,1.6vh);color:rgba(255,220,180,.4);letter-spacing:.2em;opacity:0;transition:opacity 1s;}
+  #prog{display:none;}
+  #endhint{display:none;}
+  /* 分段流程列 + 控制列（仿三國志） */
+  #bottomUI{position:fixed;left:0;right:0;bottom:0;z-index:25;padding:7px 16px 9px;background:linear-gradient(0deg,rgba(4,7,13,.95) 58%,rgba(4,7,13,0));opacity:0;transition:opacity .5s;}
+  #bottomUI.show{opacity:1;}
+  #tlPhases{display:flex;gap:4px;max-width:1000px;margin:0 auto;}
+  .ph{flex:1;cursor:pointer;text-align:center;padding:4px 2px 8px;border-radius:5px;position:relative;transition:background .3s;}
+  .ph:hover{background:rgba(120,160,210,.12);}
+  .ph .dot{width:9px;height:9px;border-radius:50%;background:#2e3a4a;margin:0 auto 3px;border:2px solid #44546a;transition:all .3s;}
+  .ph.done .dot{background:#5f86b0;border-color:#7fa0c4;}
+  .ph.active .dot{background:#cfe0f5;border-color:#fff;box-shadow:0 0 10px #9fc0e0;}
+  .ph .pn{font-size:min(1.15vw,1.5vh);color:#8298b2;white-space:nowrap;letter-spacing:.02em;}
+  .ph.active .pn{color:#dceaf7;font-weight:700;}
+  .ph .pb{position:absolute;left:8%;right:8%;bottom:1px;height:2px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;}
+  .ph .pb i{display:block;height:100%;width:0;background:#9fc0e0;}
+  #tlCtrl{display:flex;justify-content:center;align-items:center;gap:7px;margin-top:6px;flex-wrap:wrap;}
+  #tlCtrl button{background:rgba(10,16,24,.82);border:1px solid rgba(120,160,210,.3);color:#dce6f0;border-radius:5px;padding:5px 12px;font-size:min(1.35vw,1.7vh);cursor:pointer;font-family:inherit;letter-spacing:.03em;}
+  #tlCtrl button:hover{border-color:#9fc0e0;color:#fff;}
+  #tlCtrl button.on{background:rgba(120,160,210,.18);border-color:#9fc0e0;color:#fff;}
+  #tlCtrl .sep{color:#3a4656;}
 
   #start{position:fixed;inset:0;z-index:40;background:radial-gradient(ellipse at 50% 42%,#0c1a2c,#04080e 80%);
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2.2vh;transition:opacity .8s;}
@@ -62,6 +79,22 @@
 
 <div id="prog"><i id="progi"></i></div>
 <div id="endhint">— 按 R 重播 —</div>
+
+<div id="bottomUI">
+  <div id="tlPhases"></div>
+  <div id="tlCtrl">
+    <button id="btnPrev">⏮ 上一段</button>
+    <button id="btnPlay2">⏸ 暫停</button>
+    <button id="btnNext2">下一段 ⏭</button>
+    <span class="sep">｜</span>
+    <button id="btnSpeed">速度 ×1</button>
+    <span class="sep">｜</span>
+    <button id="btnCam" class="on">🎥 電影運鏡</button>
+    <button id="btnMute2" class="on">🔊 音樂</button>
+    <button id="btnNarr2" class="on">🗣 旁白</button>
+    <button id="btnReplay2">↻ 重播</button>
+  </div>
+</div>
 
 <div id="start">
   <div class="kick">SUPPLY CHAIN ‧ 開場 ‧ 3D 全息版</div>
@@ -418,9 +451,10 @@ function render(dt){
     curLook.lerpVectors(camFrom.look,camTo.look,e);camera.lookAt(curLook);controls.target.copy(curLook);
   }else{controls.update();curLook.copy(controls.target);}
 
-  document.getElementById('progi').style.width=(t/TOTAL*100)+'%';
-  document.getElementById('prog').style.opacity=(started&&playing&&t<TOTAL)?'1':'0';
-  document.getElementById('endhint').style.opacity=(started&&t>=TOTAL)?'1':'0';
+  // 分段流程列更新
+  if(tlPhasesEl){const ch=tlPhasesEl.children;for(let j=0;j<ch.length;j++){ch[j].classList.toggle('active',j===i);ch[j].classList.toggle('done',j<i);ch[j].querySelector('.pb i').style.width=(j<i?100:(j===i?clamp((t-B[j])/DUR[j],0,1)*100:0))+'%';}
+    if(bp2)bp2.textContent=(playing&&t<TOTAL)?'⏸ 暫停':'▶ 播放';
+    if(btnCam){btnCam.textContent=camMode==='cine'?'🎥 電影運鏡':'🕹 自由視角';btnCam.classList.toggle('on',camMode==='cine');}}
 
   if(useComposer)composer.render();else renderer.render(scene,camera);
 }
@@ -428,7 +462,7 @@ function render(dt){
 // ---------- 主迴圈 ----------
 let _lw=0,_lh=0;
 function checkResize(){if(innerWidth===_lw&&innerHeight===_lh)return;_lw=innerWidth;_lh=innerHeight;camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);if(useComposer)composer.setSize(innerWidth,innerHeight);}
-function loop(now){perfNow=now;if(!lastTs)lastTs=now;let dt=(now-lastTs)/1000;lastTs=now;if(dt>0.1)dt=0.1;checkResize();
+function loop(now){perfNow=now;if(!lastTs)lastTs=now;let dt=(now-lastTs)/1000;lastTs=now;if(dt>0.1)dt=0.1;dt*=speed;checkResize();
   if(started&&playing){
     const ci=sceneAt(t);let nt=t+dt;
     // 聲畫同步：旁白還沒唸完就在該幕結尾等候
@@ -439,19 +473,40 @@ function loop(now){perfNow=now;if(!lastTs)lastTs=now;let dt=(now-lastTs)/1000;la
 
 // ---------- 控制 ----------
 function resetActors(){ACT.forEach(a=>{a.vis=0;setVis(a,0);});tMat.opacity=0;lineMat.opacity=0;dMat.opacity=0;DEPT.forEach(d=>d.actor.vis=0);}
-function begin(){started=true;playing=true;t=0;lastTs=0;sceneIdx=-1;resetActors();document.getElementById('start').classList.add('hide');document.body.classList.add('cine');camMode='cine';initAudio();gotoScene(0);try{const el=document.documentElement;if(el.requestFullscreen)el.requestFullscreen().catch(()=>{});}catch(e){}}
+function begin(){started=true;playing=true;t=0;lastTs=0;sceneIdx=-1;resetActors();document.getElementById('start').classList.add('hide');document.getElementById('bottomUI').classList.add('show');document.body.classList.add('cine');camMode='cine';initAudio();gotoScene(0);try{const el=document.documentElement;if(el.requestFullscreen)el.requestFullscreen().catch(()=>{});}catch(e){}}
 function nextScene(){if(!started)return;for(let i=1;i<B.length;i++){if(B[i]>t+0.05){t=B[i];if(t>=TOTAL){t=TOTAL;playing=false;}return;}}t=TOTAL;playing=false;}
 function replay(){if(!started){begin();return;}t=0;playing=true;lastTs=0;sceneIdx=-1;resetActors();stopN();camMode='cine';gotoScene(0);}
 function toggle(){if(!started||t>=TOTAL)return;playing=!playing;if(!playing)stopN();}
 document.getElementById('playBtn').addEventListener('click',e=>{e.stopPropagation();begin();});
-canvas.addEventListener('click',()=>{if(started)nextScene();});
+let _dn=null;
+canvas.addEventListener('pointerdown',e=>{_dn=[e.clientX,e.clientY];});
+canvas.addEventListener('pointerup',e=>{if(!_dn||!started){_dn=null;return;}const m=Math.hypot(e.clientX-_dn[0],e.clientY-_dn[1]);_dn=null;if(m<6)nextScene();});
 addEventListener('keydown',e=>{
   if(e.code==='Space'){e.preventDefault();started?toggle():begin();}
   else if(e.code==='ArrowRight'){e.preventDefault();nextScene();}
   else if(e.key==='r'||e.key==='R'){e.preventDefault();replay();}
-  else if(e.key==='m'||e.key==='M'){if(!M.ctx)initAudio();M.muted=!M.muted;duck();}
-  else if(e.key==='n'||e.key==='N'){N.on=!N.on;if(!N.on)stopN();else if(started)speak(sceneAt(t));}
+  else if(e.key==='m'||e.key==='M'){document.getElementById('btnMute2').click();}
+  else if(e.key==='n'||e.key==='N'){document.getElementById('btnNarr2').click();}
+  else if(e.key==='c'||e.key==='C'){document.getElementById('btnCam').click();}
 });
+
+// ===== 分段流程列 + 控制列 =====
+const PHN=['一句話的問題','被切成四塊','被表淹沒','深夜不確定','一抹希望','隨問隨答'];
+const tlPhasesEl=document.getElementById('tlPhases');
+const bp2=document.getElementById('btnPlay2');
+const btnCam=document.getElementById('btnCam');
+let speed=1;const SPEEDS=[1,1.5,2,0.5];let si=0;
+PHN.forEach((nm,i)=>{const d=document.createElement('div');d.className='ph';d.innerHTML='<div class="dot"></div><div class="pn">'+(i+1)+'. '+nm+'</div><div class="pb"><i></i></div>';d.addEventListener('click',e=>{e.stopPropagation();jumpTo(i);});tlPhasesEl.appendChild(d);});
+function jumpTo(i){if(!started){begin();return;}i=clamp(i,0,DUR.length-1);t=B[i];sceneIdx=-1;playing=true;lastTs=0;resetActors();stopN();camMode='cine';gotoScene(i);render(0);}
+function setCine(on){camMode=on?'cine':'free';if(on)gotoScene(sceneAt(t));btnCam.textContent=on?'🎥 電影運鏡':'🕹 自由視角';btnCam.classList.toggle('on',on);}
+document.getElementById('btnPrev').addEventListener('click',e=>{e.stopPropagation();jumpTo(sceneAt(t)-1);});
+document.getElementById('btnNext2').addEventListener('click',e=>{e.stopPropagation();jumpTo(sceneAt(t)+1);});
+bp2.addEventListener('click',e=>{e.stopPropagation();started?toggle():begin();});
+document.getElementById('btnReplay2').addEventListener('click',e=>{e.stopPropagation();replay();});
+document.getElementById('btnSpeed').addEventListener('click',e=>{e.stopPropagation();si=(si+1)%SPEEDS.length;speed=SPEEDS[si];document.getElementById('btnSpeed').textContent='速度 ×'+speed;});
+btnCam.addEventListener('click',e=>{e.stopPropagation();setCine(camMode!=='cine');});
+document.getElementById('btnMute2').addEventListener('click',e=>{e.stopPropagation();if(!M.ctx)initAudio();M.muted=!M.muted;duck();document.getElementById('btnMute2').textContent=M.muted?'🔇 靜音':'🔊 音樂';document.getElementById('btnMute2').classList.toggle('on',!M.muted);});
+document.getElementById('btnNarr2').addEventListener('click',e=>{e.stopPropagation();N.on=!N.on;if(!N.on)stopN();else if(started)speak(sceneAt(t));document.getElementById('btnNarr2').textContent=N.on?'🗣 旁白':'🤐 旁白關';document.getElementById('btnNarr2').classList.toggle('on',N.on);});
 
 // 除錯
 window.__seek=x=>{started=true;playing=false;document.getElementById('start').classList.add('hide');document.body.classList.add('cine');camMode='cine';t=clamp(x,0,TOTAL);sceneIdx=-1;gotoScene(sceneAt(t));camTweenT=1;camera.position.set(SCN[sceneAt(t)].cam.p[0],SCN[sceneAt(t)].cam.p[1],SCN[sceneAt(t)].cam.p[2]);for(let k=0;k<50;k++)render(0.05);};
