@@ -19,7 +19,9 @@
 
   #subs{position:fixed;inset:0;z-index:11;pointer-events:none;}
   .sub{position:absolute;left:7%;right:7%;text-align:center;opacity:0;will-change:opacity,transform;
-    text-shadow:0 0 .35em rgba(0,0,0,.98),0 .1em .3em #000,0 0 1.4em rgba(0,0,0,.9),0 0 2.2em rgba(0,0,0,.7);}
+    padding:.55em 0;border-radius:1vh;
+    background:radial-gradient(ellipse 74% 155% at 50% 50%,rgba(5,8,14,.75) 0%,rgba(5,8,14,.45) 52%,rgba(5,8,14,0) 82%);
+    text-shadow:0 0 .35em rgba(0,0,0,.98),0 .1em .3em #000,0 0 1.4em rgba(0,0,0,.92),0 0 2.2em rgba(0,0,0,.75);}
   #labels3d{position:fixed;left:5%;bottom:20%;z-index:11;display:flex;flex-direction:column;gap:1vh;pointer-events:none;}
   #labels3d .l3{opacity:0;font-size:min(1.9vw,2.2vh);color:#9fc8e8;letter-spacing:.1em;text-shadow:0 2px 8px #000;will-change:opacity;}
   #labels3d .l3::before{content:"▸ ";color:#5f86b0;}
@@ -74,7 +76,7 @@
 <div id="subs">
   <div class="sub center big" id="s1">山苦瓜，下週會不會缺貨？</div>
   <div class="sub lower mid" id="s2"><b class="hot">一個問題</b>，被切成四塊。</div>
-  <div class="sub lower mid" id="s3">第六張，<b class="hot">還沒對完</b>。</div>
+  <div class="sub lower mid" id="s3">六張表，<b class="hot">怎麼也對不完</b>。</div>
   <div class="sub lower mid" id="sA">ERP 一個數，新得利另一個數。到底，<b class="hot">信哪一個</b>？</div>
   <div class="sub center big" id="s4"><span class="mid dim" style="display:block;margin-bottom:1.5vh">忙了一整天。</span>還是不確定——算得<b class="hot">對不對</b>。</div>
   <div class="sub lower mid" id="sB">而這，只是這週的<b class="hot">其中一個</b>品項。</div>
