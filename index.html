@@ -75,7 +75,7 @@
   <div class="sub center big" id="s1">山苦瓜，下週會不會缺貨？</div>
   <div class="sub lower mid" id="s2"><b class="hot">一個問題</b>，被切成四塊。</div>
   <div class="sub lower mid" id="s3">第六張，<b class="hot">還沒對完</b>。</div>
-  <div class="sub lower mid" id="sA">ERP、Excel、新得利，<b class="hot">三個數</b>。到底，信哪一個？</div>
+  <div class="sub lower mid" id="sA">ERP 一個數，新得利另一個數。到底，<b class="hot">信哪一個</b>？</div>
   <div class="sub center big" id="s4"><span class="mid dim" style="display:block;margin-bottom:1.5vh">忙了一整天。</span>還是不確定——算得<b class="hot">對不對</b>。</div>
   <div class="sub lower mid" id="sB">而這，只是這週的<b class="hot">其中一個</b>品項。</div>
   <div class="sub lower big" id="s5" style="bottom:13%"><span class="dim">如果……</span> 有一個<span class="warm">「懂供應鏈的 AI 同事」</span>？</div>
@@ -230,7 +230,7 @@ DEPT.forEach((d,i)=>{
   const a=d.ang*DEG;
   g.position.set(Math.sin(a)*RADF,0,-Math.cos(a)*RADF+2);
   g.lookAt(0,3,8);
-  const lbl=makeSprite([d.n],{fs:64,color:'#ffffff',bg:cssCol[i]+'f2',h:2.7});lbl.position.set(0,9.9,0);g.add(lbl);
+  const lbl=makeSprite([d.n],{fs:64,color:'#0a1420',bg:cssCol[i]+'f2',h:2.7});lbl.position.set(0,9.9,0);g.add(lbl);
   d.actor=reg(g,1);d.pop=0.6+i*1.1;
 });
 // 中央被傳遞的問題光點
@@ -274,7 +274,7 @@ const dust=new THREE.Points(dGeo,dMat);dust.frustumCulled=false;scene.add(dust);
 // ---------- 暖金 AI 同事（場景5-6） ----------
 const ally=makeFigure(0xffc06a,1.18);
 ally.position.set(0,0,1);
-const allyLbl=makeSprite(['AI 供應鏈同事'],{fs:34,color:'#fff3e0',bg:'rgba(150,90,30,0.9)',h:2.2});allyLbl.position.set(0,9.6,0);ally.add(allyLbl);
+const allyLbl=makeSprite(['AI 供應鏈同事'],{fs:46,color:'#ffe0b0',bg:'rgba(34,18,4,0.94)',h:2.5});allyLbl.position.set(0,9.8,0);ally.add(allyLbl);
 const aAlly=reg(ally,1);
 // AI 掌心暖金光球（場景6）
 const orb=new THREE.Mesh(new THREE.SphereGeometry(0.38,18,18),holoMat(0xffd089,0.85));
@@ -285,12 +285,11 @@ const aOrb=reg(orb,1);
 
 // ---------- 場景A：數字打架（ERP ≠ Excel） ----------
 const conflictGrp=new THREE.Group();
-{const mkP=(warm,x)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(5.4,3.6),new THREE.MeshBasicMaterial({map:panelTex(warm),transparent:true,opacity:0.9,side:THREE.DoubleSide,depthWrite:false}));m.position.set(x,4,0);return m;};
- conflictGrp.add(mkP(false,-7.6),mkP(true,0),mkP(false,7.6));
- const mkL=(txt,col,bg,x)=>{const l=makeSprite([txt],{fs:46,color:col,bg:bg,h:1.7});l.position.set(x,6.6,0);conflictGrp.add(l);};
- mkL('ERP','#cfe2f5','rgba(20,42,72,0.95)',-7.6);mkL('Excel','#ffd49a','rgba(74,46,20,0.95)',0);mkL('新得利','#a8eed0','rgba(20,52,38,0.95)',7.6);
- const mkN=x=>{const n=makeSprite(['≠'],{fs:160,color:'#ff8a5c',h:3.8});n.position.set(x,4,0.6);conflictGrp.add(n);return n;};
- conflictGrp._neq=[mkN(-3.8),mkN(3.8)];}
+{const mkP=(warm,x)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(6,3.8),new THREE.MeshBasicMaterial({map:panelTex(warm),transparent:true,opacity:0.9,side:THREE.DoubleSide,depthWrite:false}));m.position.set(x,4,0);return m;};
+ conflictGrp.add(mkP(false,-5),mkP(false,5));
+ const mkL=(txt,bg,x)=>{const l=makeSprite([txt],{fs:48,color:'#0c1622',bg:bg,h:1.8});l.position.set(x,6.7,0);conflictGrp.add(l);};
+ mkL('ERP','rgba(150,195,240,0.96)',-5);mkL('新得利','rgba(140,230,195,0.96)',5);
+ const neq=makeSprite(['≠'],{fs:200,color:'#ff8a5c',h:5});neq.position.set(0,4,0.6);neq.userData.bs=[neq.scale.x,neq.scale.y];conflictGrp.add(neq);conflictGrp._neq=[neq];}
 const aConflict=reg(conflictGrp,1);
 // ---------- 場景B：不只一個品項（品項海） ----------
 const swarmGrp=new THREE.Group();
@@ -303,7 +302,7 @@ swarmGrp.position.set(0,5,-4);
 const aSwarm=reg(swarmGrp,1);
 
 // 場景3：表名標籤（HTML 疊層，跟旁白唸的節奏同步顯示）
-const LBL3=['庫存表','預估表','交期表','採購單','驗收紀錄','在途明細'];
+const LBL3=['庫存表','預估表','交期表','採購單','驗收紀錄','品檢記錄'];
 const L3AT=[0.8,1.7,2.6,3.5,4.4,5.3];
 const l3=[];{const el=document.getElementById('labels3d');LBL3.forEach(tx=>{const d=document.createElement('div');d.className='l3';d.textContent=tx;el.appendChild(d);l3.push(d);});}
 
@@ -323,7 +322,7 @@ const SCN=[
  {cam:{p:[0,4.5,17],look:[0,5,-1],drift:[0,0,-6]}},     // 0 粒子問句
  {cam:{p:[0,5,15],look:[0,3.5,0],drift:[0,0,-2]}},      // 1 四同事包圍
  {cam:{p:[0,5,7],look:[0,4,-2],drift:[0,1,-1]}},        // 2 面板牢籠
- {cam:{p:[0,4.5,20],look:[0,4.5,0],drift:[0,0,-1.5]}},  // 3 數字打架（ERP≠Excel≠新得利）
+ {cam:{p:[0,4.5,16.5],look:[0,4.5,0],drift:[0,0,-2]}},  // 3 數字打架（ERP≠新得利）
  {cam:{p:[0,6.5,20],look:[0,5,0],drift:[0,1,6]}},       // 4 深夜塌縮
  {cam:{p:[0,5,10],look:[0,5,-4],drift:[0,0,8]}},        // 5 品項海拉遠
  {cam:{p:[0,4.5,19],look:[0,4.5,0],drift:[0,0,-2.5]}},  // 6 色溫翻轉+AI
@@ -394,8 +393,8 @@ function musicTick(){if(!M.ctx)return;const c=M.ctx;if(c.state==='suspended'){c.
 const NARR=[
  '其實，這只是一個很簡單的問題。照理說，幾秒鐘就能回答。',
  '要回答它，我得問倉管、問生管、看採購進度、再等品管回覆。同一個答案，散在四位同事手上。',
- '庫存表、預估表、交期表、採購單、驗收紀錄、在途明細……六張表攤開，一張一張比對，耗掉一整個下午。',
- '更麻煩的是，ERP、Excel、新得利，三邊數字還對不起來。到底該信哪一個？',
+ '庫存表、預估表、交期表、採購單、驗收紀錄、品檢記錄……六張表攤開，一張一張比對，耗掉一整個下午。',
+ '更麻煩的是，ERP 跟 新得利，兩邊數字還對不起來。到底該信哪一個？',
  '天黑了，忙了一整天。我最放不下的還是——這個答案，真的對嗎？',
  '而山苦瓜，只是這週要顧的幾百個品項，其中一個而已。',
  '那如果，有一位真正懂供應鏈的 AI 同事呢？你只要問一句，剩下的都交給它。',
@@ -471,7 +470,7 @@ function render(dt){
 
   // ---- 場景A（index3）：數字打架（ERP≠Excel） ----
   {aConflict.vis=lerp(aConflict.vis,(i===3?1:0),dt*2.6);setVis(aConflict,aConflict.vis);
-   if(aConflict.group.visible&&conflictGrp._neq){const ps=1+0.16*Math.sin(T*5);conflictGrp._neq.forEach(n=>n.scale.set(3.8*ps,3.8*ps,1));}}
+   if(aConflict.group.visible&&conflictGrp._neq){const ps=1+0.16*Math.sin(T*5);conflictGrp._neq.forEach(n=>{const b=n.userData.bs;n.scale.set(b[0]*ps,b[1]*ps,1);});}}
 
   // ---- 場景B（index5）：不只一個品項（品項海） ----
   {aSwarm.vis=lerp(aSwarm.vis,(i===5?1:0),dt*2.2);setVis(aSwarm,easeOut(aSwarm.vis));}
