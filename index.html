@@ -105,7 +105,9 @@
     <span class="sep">｜</span>
     <button id="btnCam" class="on">🎥 電影運鏡</button>
     <button id="btnMute2" class="on">🔊 音樂</button>
+    <select id="styleSel" title="音樂風格"></select>
     <button id="btnNarr2" class="on">🗣 旁白</button>
+    <select id="langSel" title="旁白語言"></select>
     <select id="voiceSel" title="旁白聲音（可切換不同語音）"></select>
     <button id="btnReplay2">↻ 重播</button>
   </div>
@@ -117,6 +119,7 @@
   <div class="meta">約 60 秒 ‧ 建議全螢幕播放 ‧ 含音樂與旁白</div>
   <button id="playBtn">▶ 開始</button>
   <div class="keys"><b>空白</b> 暫停／繼續　<b>→/點擊</b> 下一段　<b>R</b> 重播　<b>M</b> 音樂　<b>N</b> 旁白　<b>拖曳</b> 自由視角</div>
+  <div class="vrow">🌐 旁白語言：<select id="langSel0" title="旁白語言"></select>　🎵 音樂：<select id="styleSel0" title="音樂風格"></select></div>
   <div class="vrow">🗣 旁白聲音：<select id="voiceSel0" title="選擇旁白語音（可先試聽）"></select></div>
 </div>
 <div id="errBox"></div>
@@ -240,7 +243,7 @@ DEPT.forEach((d,i)=>{
   g.position.set(Math.sin(a)*RADF,0,-Math.cos(a)*RADF+2);
   g.lookAt(0,3,8);
   const lbl=makeSprite([d.n],{fs:64,color:'#0a1420',bg:cssCol[i]+'f2',h:2.7});lbl.position.set(0,9.9,0);g.add(lbl);
-  d.actor=reg(g,1);d.pop=0.6+i*1.1;
+  d.lbl=lbl;d.actor=reg(g,1);d.pop=0.6+i*1.1;
 });
 // 中央被傳遞的問題光點
 const qball=new THREE.Mesh(new THREE.SphereGeometry(0.42,16,16),holoMat(0x9fd8ff,0.7));
@@ -357,14 +360,25 @@ controls.addEventListener('start',()=>{camMode='free';});
 // ============================================================
 //  音樂（Web Audio，同 2D 弧線）
 // ============================================================
-const M={ctx:null,master:null,mlp:null,bus:null,padOsc:[],padGain:null,padFilt:null,muted:false,vol:0.55,sched:0,beat:0};
+const M={ctx:null,master:null,mlp:null,bus:null,padOsc:[],padGain:null,padFilt:null,revWet:null,muted:false,vol:0.55,sched:0,beat:0};
+// ===== 音樂風格（同一合成引擎的氛圍變體）=====
+const STYLES={
+ cinematic:{name:'🎬 電影弦樂',padMul:1,cutMul:1,pianoMul:1,pulseMul:1,rev:0.55,arp:0,bell:0},
+ piano:{name:'🎹 溫暖鋼琴',padMul:0.55,cutMul:1.5,pianoMul:2.0,pulseMul:0.3,rev:0.62,arp:0,bell:0},
+ ambient:{name:'🌌 空靈氛圍',padMul:1.4,cutMul:0.85,pianoMul:0.7,pulseMul:0.1,rev:1.0,arp:0,bell:1},
+ tech:{name:'⚡ 輕快科技',padMul:0.7,cutMul:1.7,pianoMul:0.5,pulseMul:0.75,rev:0.32,arp:1,bell:0}
+};
+let styleKey='cinematic';const ST=()=>STYLES[styleKey];
+function applyStyle(k){if(!STYLES[k])return;styleKey=k;const a=document.getElementById('styleSel'),b=document.getElementById('styleSel0');if(a)a.value=k;if(b)b.value=k;if(M.revWet)M.revWet.gain.value=ST().rev;if(M.ctx)musicScene(sceneAt(t));}
+function buildStyleSel(){['styleSel','styleSel0'].forEach(id=>{const sel=document.getElementById(id);if(!sel)return;sel.innerHTML='';Object.keys(STYLES).forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=STYLES[k].name;sel.appendChild(o);});sel.value=styleKey;});}
+buildStyleSel();
 function _impulse(c,dur,decay){const len=Math.floor(c.sampleRate*dur);const b=c.createBuffer(2,len,c.sampleRate);for(let ch=0;ch<2;ch++){const d=b.getChannelData(ch);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,decay);}return b;}
 function initAudio(){if(M.ctx)return;const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;const c=M.ctx=new AC();
   M.master=c.createGain();M.master.gain.value=M.vol;
   M.mlp=c.createBiquadFilter();M.mlp.type='lowpass';M.mlp.frequency.value=5200;M.master.connect(M.mlp);M.mlp.connect(c.destination);
   M.bus=c.createGain();M.bus.connect(M.master);
-  try{const conv=c.createConvolver();conv.buffer=_impulse(c,2.6,2.4);const w=c.createGain();w.gain.value=0.55;M.bus.connect(conv);conv.connect(w);w.connect(M.master);}
-  catch(e){const dly=c.createDelay(1);dly.delayTime.value=0.35;const fb=c.createGain();fb.gain.value=0.32;const w=c.createGain();w.gain.value=0.3;M.bus.connect(dly);dly.connect(fb);fb.connect(dly);dly.connect(w);w.connect(M.master);}
+  try{const conv=c.createConvolver();conv.buffer=_impulse(c,2.6,2.4);const w=c.createGain();w.gain.value=ST().rev;M.revWet=w;M.bus.connect(conv);conv.connect(w);w.connect(M.master);}
+  catch(e){const dly=c.createDelay(1);dly.delayTime.value=0.35;const fb=c.createGain();fb.gain.value=0.32;const w=c.createGain();w.gain.value=ST().rev*0.55;M.revWet=w;M.bus.connect(dly);dly.connect(fb);fb.connect(dly);dly.connect(w);w.connect(M.master);}
   M.padFilt=c.createBiquadFilter();M.padFilt.type='lowpass';M.padFilt.frequency.value=1100;M.padFilt.Q.value=0.5;
   M.padGain=c.createGain();M.padGain.gain.value=0;M.padFilt.connect(M.padGain);M.padGain.connect(M.bus);
   [146.83,174.61,220,293.66].forEach((f,k)=>{const o=c.createOscillator();o.type=k%2?'triangle':'sine';o.frequency.value=f;const g=c.createGain();g.gain.value=0.2;o.connect(g);g.connect(M.padFilt);o.start();const o2=c.createOscillator();o2.type='sine';o2.frequency.value=f*1.004;const g2=c.createGain();g2.gain.value=0.11;o2.connect(g2);g2.connect(M.padFilt);o2.start();o._d=o2;M.padOsc.push(o);});
@@ -377,55 +391,135 @@ function subPulse(t0,v){const c=M.ctx;const o=c.createOscillator();o.type='sine'
 const CHORDS=[[146.83,174.61,220,293.66],[146.83,174.61,220,261.63],[146.83,174.61,220,311.13],[146.83,174.61,207.65,311.13],[146.83,220,293.66,440],[110,146.83,174.61,220],[116.54,146.83,174.61,233.08],[174.61,220,261.63,349.23]];
 const PADLV=[0.07,0.08,0.12,0.115,0.045,0.1,0.095,0.1];
 const PADCUT=[1100,1300,1600,1400,800,1150,2600,3200];
-function musicScene(i){if(!M.ctx)return;const c=M.ctx,now=c.currentTime;padChord(CHORDS[i]||CHORDS[0]);
+function musicScene(i){if(!M.ctx)return;const c=M.ctx,now=c.currentTime,st=ST();padChord(CHORDS[i]||CHORDS[0]);
   M.padGain.gain.cancelScheduledValues(now);M.padGain.gain.setValueAtTime(M.padGain.gain.value,now);
-  if(i!==2)M.padGain.gain.linearRampToValueAtTime(PADLV[i],now+1.3);
-  M.padFilt.frequency.setTargetAtTime(PADCUT[i],now,0.9);
-  if(i===6)pianoChord(now+0.2,[233.08,293.66,349.23,466.16],0.085);
-  if(i===7)pianoChord(now+0.2,[349.23,440,523.25],0.08);}
-function musicTick(){if(!M.ctx)return;const c=M.ctx;if(c.state==='suspended'){c.resume();return;}const i=sceneAt(t),ls=t-B[i];
-  if(i===2&&M.padGain){const rise=Math.min(1,ls/9);const trem=1+0.14*Math.sin(c.currentTime*5.5);M.padGain.gain.value=(0.05+0.1*rise)*trem;M.padFilt.frequency.value=850+rise*1500;}
+  if(i!==2)M.padGain.gain.linearRampToValueAtTime(PADLV[i]*st.padMul,now+1.3);
+  M.padFilt.frequency.setTargetAtTime(PADCUT[i]*st.cutMul,now,0.9);
+  if(i===6)pianoChord(now+0.2,[233.08,293.66,349.23,466.16],0.085*st.pianoMul);
+  if(i===7)pianoChord(now+0.2,[349.23,440,523.25],0.08*st.pianoMul);}
+function musicTick(){if(!M.ctx)return;const c=M.ctx;if(c.state==='suspended'){c.resume();return;}const i=sceneAt(t),ls=t-B[i],st=ST();
+  const P=(t0,f,v,d)=>piano(t0,f,v*st.pianoMul,d);const SP=(t0,v)=>{if(st.pulseMul>0.01)subPulse(t0,v*st.pulseMul);};
+  if(i===2&&M.padGain){const rise=Math.min(1,ls/9);const trem=1+0.14*Math.sin(c.currentTime*5.5);M.padGain.gain.value=(0.05+0.1*rise)*trem*st.padMul;M.padFilt.frequency.value=(850+rise*1500)*st.cutMul;}
+  const ARP=[392.0,440,523.25,587.33,659.25];
   while(M.sched<c.currentTime+0.2){const tt=M.sched;
-    if(i===0){if(M.beat%16===0)piano(tt,392.0,0.06,3.2);if(M.beat%16===9)piano(tt,329.63,0.045,3);}
-    else if(i===1){if(M.beat%8===0)subPulse(tt,0.15);if(M.beat%16===6)piano(tt,293.66,0.055,2.8);}
-    else if(i===2){const d=2+Math.floor(ls/3);if(M.beat%Math.max(2,7-d)===0)subPulse(tt,0.14);if(M.beat%14===0)piano(tt,311.13,0.05,2.2);}
-    else if(i===3){if(M.beat%4===0)piano(tt,(M.beat/4)%2?293.66:311.13,0.06,1.6);if(M.beat%8===0)subPulse(tt,0.13);}
-    else if(i===4){if(M.beat%26===0)piano(tt,349.23,0.06,3.8);}
-    else if(i===5){const d=Math.floor(ls/2);if(M.beat%Math.max(3,8-d)===0)subPulse(tt,0.2);if(M.beat%16===0)piano(tt,174.61,0.06,2.4);}
-    else if(i===6){if(M.beat%6===0)piano(tt,[233.08,293.66,349.23,466.16][(M.beat/6)%4|0],0.075,2.8);}
-    else if(i===7){if(M.beat%8===0)piano(tt,[349.23,440,523.25][(M.beat/8)%3|0],0.07,3);}
+    if(i===0){if(M.beat%16===0)P(tt,392.0,0.06,3.2);if(M.beat%16===9)P(tt,329.63,0.045,3);}
+    else if(i===1){if(M.beat%8===0)SP(tt,0.15);if(M.beat%16===6)P(tt,293.66,0.055,2.8);}
+    else if(i===2){const d=2+Math.floor(ls/3);if(M.beat%Math.max(2,7-d)===0)SP(tt,0.14);if(M.beat%14===0)P(tt,311.13,0.05,2.2);}
+    else if(i===3){if(M.beat%4===0)P(tt,(M.beat/4)%2?293.66:311.13,0.06,1.6);if(M.beat%8===0)SP(tt,0.13);}
+    else if(i===4){if(M.beat%26===0)P(tt,349.23,0.06,3.8);}
+    else if(i===5){const d=Math.floor(ls/2);if(M.beat%Math.max(3,8-d)===0)SP(tt,0.2);if(M.beat%16===0)P(tt,174.61,0.06,2.4);}
+    else if(i===6){if(M.beat%6===0)P(tt,[233.08,293.66,349.23,466.16][(M.beat/6)%4|0],0.075,2.8);}
+    else if(i===7){if(M.beat%8===0)P(tt,[349.23,440,523.25][(M.beat/8)%3|0],0.07,3);}
+    if(st.arp&&i!==4&&M.beat%2===0)piano(tt,ARP[(M.beat/2)%ARP.length|0]*(i>=6?1.5:1),0.02,0.5);
+    if(st.bell&&M.beat%24===0)piano(tt,[784,880,1047][(M.beat/24)%3|0],0.028,4.2);
     M.sched+=60/120/2;M.beat++;}}
 
 // ============================================================
 //  旁白（Web Speech）
 // ============================================================
-const NARR=[
- '其實，這只是一個很簡單的問題。照理說，幾秒鐘就能回答。',
- '要回答它，我得問倉管、問生管、看採購進度、再等品管回覆。同一個答案，散在四位同事手上。',
- '庫存表、預估表、交期表、採購單、驗收紀錄、品檢記錄……六張表攤開，一張一張比對，耗掉一整個下午。',
- '更麻煩的是，ERP 跟 新得利，兩邊數字還對不起來。到底該信哪一個？',
- '天黑了，忙了一整天。我最放不下的還是——這個答案，真的對嗎？',
- '而山苦瓜，只是這週要顧的幾百個品項，其中一個而已。',
- '那如果，有一位真正懂供應鏈的 AI 同事呢？你只要問一句，剩下的都交給它。',
- '同樣的問題，再問一次。這一次，只要幾秒就有答案。隨問，隨答。'
-];
+// ===== 多國語言（旁白＋故事字幕＋部門/表名/AI標牌；ERP、新得利、≠ 維持原樣）=====
+const LANG={
+ zh:{name:'中文',code:'zh-TW',ai:'AI 供應鏈同事',
+  narr:[
+   '其實，這只是一個很簡單的問題。照理說，幾秒鐘就能回答。',
+   '要回答它，我得問倉管、問生管、看採購進度、再等品管回覆。同一個答案，散在四位同事手上。',
+   '庫存表、預估表、交期表、採購單、驗收紀錄、品檢記錄……六張表攤開，一張一張比對，耗掉一整個下午。',
+   '更麻煩的是，ERP 跟 新得利，兩邊數字還對不起來。到底該信哪一個？',
+   '天黑了，忙了一整天。我最放不下的還是——這個答案，真的對嗎？',
+   '而山苦瓜，只是這週要顧的幾百個品項，其中一個而已。',
+   '那如果，有一位真正懂供應鏈的 AI 同事呢？你只要問一句，剩下的都交給它。',
+   '同樣的問題，再問一次。這一次，只要幾秒就有答案。隨問，隨答。'],
+  q:'山苦瓜，下週會不會缺貨？',ans:'「不會。我幫你看過了。」',slogan:'隨問，隨答。',
+  depts:['倉管','生管','採購','品管'],tables:['庫存表','預估表','交期表','採購單','驗收紀錄','品檢記錄'],
+  s2:'<b class="hot">一個問題</b>，被切成四塊。',
+  s3:'六張表，<b class="hot">怎麼也對不完</b>。',
+  sA:'ERP 一個數，新得利另一個數。到底，<b class="hot">信哪一個</b>？',
+  s4:'<span class="mid dim" style="display:block;margin-bottom:1.5vh">忙了一整天。</span>還是不確定——算得<b class="hot">對不對</b>。',
+  sB:'而這，只是這週的<b class="hot">其中一個</b>品項。',
+  s5:'<span class="dim">如果……</span> 有一個<span class="warm">「懂供應鏈的 AI 同事」</span>？'},
+ en:{name:'English',code:'en-US',ai:'AI Supply-Chain Teammate',
+  narr:[
+   "It's actually a very simple question. In theory, it should take just seconds to answer.",
+   "But to answer it, I have to ask the warehouse, ask planning, check purchasing, then wait for QC. One answer, scattered across four colleagues.",
+   "Stock sheet, forecast, lead-time, purchase orders, receiving records, QC logs... six sheets spread out, cross-checked one by one — a whole afternoon, gone.",
+   "Worse still, ERP and 新得利 don't even agree. Which number do I trust?",
+   "Night falls. A whole day's work. And what I still can't shake is — is this answer even right?",
+   "And bitter gourd is just one of the hundreds of items I'm watching this week.",
+   "But what if there were an AI teammate who truly understood supply chain? You just ask, and it handles the rest.",
+   "The same question, asked again. This time, the answer takes only seconds. Ask anytime, answered instantly."],
+  q:'Bitter gourd — will we run out next week?',ans:'“No. I’ve already checked for you.”',slogan:'Ask anytime. Answered instantly.',
+  depts:['Warehouse','Planning','Purchasing','QC'],tables:['Stock','Forecast','Lead-time','PO','Receiving','QC log'],
+  s2:'<b class="hot">One question</b>, split four ways.',
+  s3:'<b class="hot">Six sheets</b> that never reconcile.',
+  sA:'ERP says one, 新得利 another. <b class="hot">Which do I trust</b>?',
+  s4:'<span class="mid dim" style="display:block;margin-bottom:1.5vh">A whole day&#39;s work.</span>Still not sure the numbers <b class="hot">add up</b>.',
+  sB:'And this is just <b class="hot">one item</b> this week.',
+  s5:'<span class="dim">What if…</span> there were an <span class="warm">AI that truly knows supply chain</span>?'},
+ ja:{name:'日本語',code:'ja-JP',ai:'AI サプライチェーンの同僚',
+  narr:[
+   '実は、これはとても簡単な質問です。本来なら数秒で答えられるはず。',
+   'でも答えるには、倉庫管理に聞き、生産管理に聞き、購買の進捗を見て、品質管理の返答を待つ。ひとつの答えが、四人の同僚に散らばっている。',
+   '在庫表、予測表、納期表、発注書、検収記録、品質検査記録……六枚の表を広げ、一枚ずつ照合して、午後がまるごと消える。',
+   '厄介なのは、ERPと新得利で数字が合わないこと。どちらを信じればいい？',
+   '日が暮れ、丸一日働いた。それでも引っかかるのは——この答え、本当に正しい？',
+   'そしてゴーヤは、今週見るべき数百の品目のひとつにすぎない。',
+   'もし、供給網を本当に理解したAIの同僚がいたら？ひと言聞くだけで、あとは全部任せられる。',
+   '同じ質問を、もう一度。今度は数秒で答えが出る。聞けば、すぐ答える。'],
+  q:'ゴーヤ、来週は欠品する？',ans:'「いいえ。確認しておきました。」',slogan:'聞けば、すぐ答える。',
+  depts:['倉庫','生産','購買','品質'],tables:['在庫表','予測表','納期表','発注書','検収記録','品質検査'],
+  s2:'<b class="hot">ひとつの質問</b>が、四つに分かれる。',
+  s3:'六枚の表が、<b class="hot">どうしても合わない</b>。',
+  sA:'ERPとひとつ、新得利と別の数字。<b class="hot">どっちを信じる</b>？',
+  s4:'<span class="mid dim" style="display:block;margin-bottom:1.5vh">丸一日働いた。</span>それでも確信が持てない——<b class="hot">合っているか</b>。',
+  sB:'これは、今週の<b class="hot">ひとつの品目</b>にすぎない。',
+  s5:'<span class="dim">もし……</span> <span class="warm">「供給網を理解したAIの同僚」</span>がいたら？'}
+};
+let lang='zh',L=LANG[lang];
+let NARR=L.narr;
 const N={on:true,active:false,voice:null,pending:null,guard:null,cur:null,sup:('speechSynthesis' in window)};
-function fillSel(sel){if(!sel||!N.list)return;const cur=N.list.indexOf(N.voice);sel.innerHTML='';if(!N.list.length){const o=document.createElement('option');o.textContent='（無中文語音）';sel.appendChild(o);return;}N.list.forEach((v,k)=>{const o=document.createElement('option');o.value=k;let nm=v.name.replace('Microsoft ','').replace(/ ?- ?Chinese.*/i,'').replace(/\(.*?(Taiwan|台灣).*?\)/i,'');o.textContent='🗣 '+nm.slice(0,26)+(/online|natural|neural/i.test(v.name)?' ✨':'');sel.appendChild(o);});if(cur>=0)sel.selectedIndex=cur;}
+function allVoices(){return N.sup?speechSynthesis.getVoices():[];}
+function fillSel(sel){if(!sel)return;const all=allVoices();sel.innerHTML='';if(!all.length){const o=document.createElement('option');o.textContent='（此裝置無語音）';sel.appendChild(o);return;}
+  const rx=new RegExp('^'+lang,'i');const inL=all.filter(v=>rx.test(v.lang)),rest=all.filter(v=>!rx.test(v.lang));
+  const mk=v=>{const o=document.createElement('option');o.value=all.indexOf(v);let nm=v.name.replace('Microsoft ','').replace('Google ','');o.textContent='🗣 '+nm.slice(0,30)+(/online|natural|neural/i.test(v.name)?' ✨':'');return o;};
+  inL.forEach(v=>sel.appendChild(mk(v)));
+  if(rest.length){const d=document.createElement('option');d.disabled=true;d.textContent='──── 其他語音 ────';sel.appendChild(d);rest.forEach(v=>sel.appendChild(mk(v)));}
+  const idx=all.indexOf(N.voice);if(idx>=0)sel.value=String(idx);}
 function buildVoiceSel(){fillSel(document.getElementById('voiceSel'));fillSel(document.getElementById('voiceSel0'));}
-function setVoiceIdx(k){if(!N.list||!N.list[k])return;N.voice=N.list[k];const a=document.getElementById('voiceSel'),b=document.getElementById('voiceSel0');if(a)a.selectedIndex=k;if(b)b.selectedIndex=k;speak(sceneAt(t));}
-function pickV(){if(!N.sup)return;const vs=speechSynthesis.getVoices().filter(v=>/^zh|zh[-_]/i.test(v.lang));N.list=vs;
-  N.voice=vs.find(v=>/TW/i.test(v.lang)&&/online|natural|neural|曉|雲/i.test(v.name))
-    ||vs.find(v=>/online|natural|neural/i.test(v.name))
-    ||vs.find(v=>/TW/i.test(v.lang)&&/google/i.test(v.name))
-    ||vs.find(v=>/google/i.test(v.name)&&/TW|HK/i.test(v.lang))
-    ||vs.find(v=>/TW/i.test(v.lang)&&!/hanhan/i.test(v.name))
-    ||vs.find(v=>/TW/i.test(v.lang))||vs.find(v=>/HK/i.test(v.lang))||vs[0]||null;
+function setVoiceIdx(k){const all=allVoices();if(!all[k])return;N.voice=all[k];const a=document.getElementById('voiceSel'),b=document.getElementById('voiceSel0');if(a)a.value=String(k);if(b)b.value=String(k);if(started)speak(sceneAt(t));}
+function pickV(){if(!N.sup)return;const all=allVoices();const rx=new RegExp('^'+lang,'i');const full=L.code.toLowerCase().replace('_','-');
+  const vs=all.filter(v=>rx.test(v.lang));const exact=vs.filter(v=>v.lang.toLowerCase().replace('_','-')===full);const pool=exact.length?exact:vs;
+  N.voice=pool.find(v=>/online|natural|neural|曉|雲/i.test(v.name))
+    ||pool.find(v=>/google/i.test(v.name))
+    ||pool.find(v=>!/hanhan/i.test(v.name))
+    ||pool[0]||vs[0]||all[0]||null;
   buildVoiceSel();}
+// 重建 3D 精靈標牌貼圖（切語言用）
+function updateSpriteText(sp,lines,opt){opt=opt||{};const fs=opt.fs||40,pad=opt.pad||16;
+  const cv=document.createElement('canvas'),mc=cv.getContext('2d');mc.font='700 '+fs+'px "PingFang TC","Microsoft JhengHei",sans-serif';
+  let w=0;lines.forEach(l=>w=Math.max(w,mc.measureText(l).width));cv.width=Math.ceil(w+pad*2);cv.height=fs*1.3*lines.length+pad*2;
+  const c=cv.getContext('2d');if(opt.bg){c.fillStyle=opt.bg;c.beginPath();const r=14;c.moveTo(r,0);c.arcTo(cv.width,0,cv.width,cv.height,r);c.arcTo(cv.width,cv.height,0,cv.height,r);c.arcTo(0,cv.height,0,0,r);c.arcTo(0,0,cv.width,0,r);c.fill();}
+  c.font='700 '+fs+'px "PingFang TC","Microsoft JhengHei",sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillStyle=opt.color||'#fff';
+  lines.forEach((l,i)=>c.fillText(l,cv.width/2,pad+fs*1.3*(i+0.5)));
+  const tex=new THREE.CanvasTexture(cv);tex.minFilter=THREE.LinearFilter;if(sp.material.map)sp.material.map.dispose();sp.material.map=tex;sp.material.needsUpdate=true;
+  const h=opt.h||3;sp.scale.set(h*cv.width/cv.height,h,1);}
+// 切語言：旁白＋字幕＋表名＋部門/AI 標牌一起換
+function applyLang(code){if(!LANG[code])return;lang=code;L=LANG[code];NARR=L.narr;
+  const set=(id,html)=>{const el=document.getElementById(id);if(el)el.innerHTML=html;};
+  document.getElementById('s1').textContent=L.q;
+  set('s2',L.s2);set('s3',L.s3);set('sA',L.sA);set('s4',L.s4);set('sB',L.sB);set('s5',L.s5);
+  set('s6','<span class="dim mid" style="display:block;margin-bottom:1.2vh">'+L.q+'</span><span class="warm">'+L.ans+'</span><span class="warm" style="letter-spacing:.3em;display:inline-block;margin-left:.6em">'+L.slogan+'</span>');
+  l3.forEach((el,k)=>{if(L.tables[k])el.textContent=L.tables[k];});
+  DEPT.forEach((d,k)=>{if(d.lbl&&L.depts[k])updateSpriteText(d.lbl,[L.depts[k]],{fs:64,color:'#0a1420',bg:cssCol[k]+'f2',h:2.7});});
+  if(typeof allyLbl!=='undefined'&&allyLbl)updateSpriteText(allyLbl,[L.ai],{fs:46,color:'#ffe0b0',bg:'rgba(34,18,4,0.94)',h:2.5});
+  const a=document.getElementById('langSel'),b=document.getElementById('langSel0');if(a)a.value=code;if(b)b.value=code;
+  pickV();if(started)speak(sceneAt(t));}
+function buildLangSel(){['langSel','langSel0'].forEach(id=>{const sel=document.getElementById(id);if(!sel)return;sel.innerHTML='';Object.keys(LANG).forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent='🌐 '+LANG[k].name;sel.appendChild(o);});sel.value=lang;});}
 if(N.sup){pickV();speechSynthesis.onvoiceschanged=pickV;}
+buildLangSel();
 function duck(){if(M.master)M.master.gain.value=M.muted?0:(N.on&&N.active?M.vol*0.45:M.vol);}
 function stopN(){if(!N.sup)return;clearTimeout(N.pending);clearTimeout(N.guard);N.cur=null;speechSynthesis.cancel();N.active=false;duck();}
 function speak(i){if(!N.sup)return;stopN();if(!N.on)return;const txt=NARR[i];if(!txt)return;N.active=true;duck();
-  N.pending=setTimeout(()=>{const u=new SpeechSynthesisUtterance(txt);if(N.voice)u.voice=N.voice;u.lang=N.voice?N.voice.lang:'zh-TW';u.rate=(i<=3?0.97:1.0);u.pitch=1;u.volume=1;N.cur=u;u.onend=u.onerror=()=>{if(N.cur===u){N.active=false;duck();}};speechSynthesis.speak(u);},450);
+  N.pending=setTimeout(()=>{const u=new SpeechSynthesisUtterance(txt);if(N.voice)u.voice=N.voice;u.lang=N.voice?N.voice.lang:L.code;u.rate=(i<=3?0.97:1.0);u.pitch=1;u.volume=1;N.cur=u;u.onend=u.onerror=()=>{if(N.cur===u){N.active=false;duck();}};speechSynthesis.speak(u);},450);
   N.guard=setTimeout(()=>{N.active=false;duck();},22000);}
 
 // ============================================================
@@ -581,6 +675,8 @@ btnCam.addEventListener('click',e=>{e.stopPropagation();setCine(camMode!=='cine'
 document.getElementById('btnMute2').addEventListener('click',e=>{e.stopPropagation();if(!M.ctx)initAudio();M.muted=!M.muted;duck();document.getElementById('btnMute2').textContent=M.muted?'🔇 靜音':'🔊 音樂';document.getElementById('btnMute2').classList.toggle('on',!M.muted);});
 document.getElementById('btnNarr2').addEventListener('click',e=>{e.stopPropagation();N.on=!N.on;if(!N.on)stopN();else if(started)speak(sceneAt(t));document.getElementById('btnNarr2').textContent=N.on?'🗣 旁白':'🤐 旁白關';document.getElementById('btnNarr2').classList.toggle('on',N.on);});
 ['voiceSel','voiceSel0'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('change',e=>{e.stopPropagation();setVoiceIdx(+e.target.value);});}); // 封面與控制列兩個下拉同步、切換即試聽
+['langSel','langSel0'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('change',e=>{e.stopPropagation();applyLang(e.target.value);});}); // 切語言：旁白＋字幕＋表名＋標牌一起換
+['styleSel','styleSel0'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('change',e=>{e.stopPropagation();if(!M.ctx)initAudio();applyStyle(e.target.value);});}); // 切音樂風格（封面/播放中皆可）
 
 // 除錯
 window.__seek=x=>{started=true;playing=false;document.getElementById('start').classList.add('hide');document.body.classList.add('cine');camMode='cine';t=clamp(x,0,TOTAL);sceneIdx=-1;gotoScene(sceneAt(t));camTweenT=1;camera.position.set(SCN[sceneAt(t)].cam.p[0],SCN[sceneAt(t)].cam.p[1],SCN[sceneAt(t)].cam.p[2]);for(let k=0;k<50;k++)render(0.05);};
