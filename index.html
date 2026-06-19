@@ -18,7 +18,11 @@
   #vignette{position:fixed;inset:0;z-index:12;pointer-events:none;background:radial-gradient(120% 100% at 50% 50%,rgba(0,0,0,0) 52%,rgba(0,0,0,.58) 100%);}
 
   #subs{position:fixed;inset:0;z-index:11;pointer-events:none;}
-  .sub{position:absolute;left:7%;right:7%;text-align:center;opacity:0;will-change:opacity,transform;text-shadow:0 .12em .8em rgba(0,0,0,.8);}
+  .sub{position:absolute;left:7%;right:7%;text-align:center;opacity:0;will-change:opacity,transform;
+    text-shadow:0 0 .35em rgba(0,0,0,.98),0 .1em .3em #000,0 0 1.4em rgba(0,0,0,.9),0 0 2.2em rgba(0,0,0,.7);}
+  #labels3d{position:fixed;left:5%;bottom:20%;z-index:11;display:flex;flex-direction:column;gap:1vh;pointer-events:none;}
+  #labels3d .l3{opacity:0;font-size:min(1.9vw,2.2vh);color:#9fc8e8;letter-spacing:.1em;text-shadow:0 2px 8px #000;will-change:opacity;}
+  #labels3d .l3::before{content:"▸ ";color:#5f86b0;}
   .sub.center{top:50%;transform:translateY(-50%);}
   .sub.lower{bottom:15%;}
   .big{font-weight:600;letter-spacing:.05em;font-size:min(5vw,5.6vh);line-height:1.5;}
@@ -71,13 +75,14 @@
   <div class="sub center big" id="s1">山苦瓜，下週會不會缺貨？</div>
   <div class="sub lower mid" id="s2"><b class="hot">一個問題</b>，被切成四塊。</div>
   <div class="sub lower mid" id="s3">第六張，<b class="hot">還沒對完</b>。</div>
-  <div class="sub lower mid" id="sA">ERP 一個數，Excel 另一個數。到底，<b class="hot">信哪一個</b>？</div>
+  <div class="sub lower mid" id="sA">ERP、Excel、新得利，<b class="hot">三個數</b>。到底，信哪一個？</div>
   <div class="sub center big" id="s4"><span class="mid dim" style="display:block;margin-bottom:1.5vh">忙了一整天。</span>還是不確定——算得<b class="hot">對不對</b>。</div>
   <div class="sub lower mid" id="sB">而這，只是這週的<b class="hot">其中一個</b>品項。</div>
   <div class="sub lower big" id="s5" style="bottom:13%"><span class="dim">如果……</span> 有一個<span class="warm">「懂供應鏈的 AI 同事」</span>？</div>
   <div class="sub lower big" id="s6" style="bottom:11%"><span class="dim mid" style="display:block;margin-bottom:1.2vh">山苦瓜，下週會不會缺貨？</span><span class="warm">「不會。我幫你看過了。」</span><span class="warm" style="letter-spacing:.3em;display:inline-block;margin-left:.6em">隨問，隨答。</span></div>
 </div>
 <div id="clock3d">21:47</div>
+<div id="labels3d"></div>
 
 <div id="prog"><i id="progi"></i></div>
 <div id="endhint">— 按 R 重播 —</div>
@@ -225,7 +230,7 @@ DEPT.forEach((d,i)=>{
   const a=d.ang*DEG;
   g.position.set(Math.sin(a)*RADF,0,-Math.cos(a)*RADF+2);
   g.lookAt(0,3,8);
-  const lbl=makeSprite([d.n],{fs:38,color:'#fff',bg:cssCol[i]+'dd',h:2.1});lbl.position.set(0,9.7,0);g.add(lbl);
+  const lbl=makeSprite([d.n],{fs:64,color:'#ffffff',bg:cssCol[i]+'f2',h:2.7});lbl.position.set(0,9.9,0);g.add(lbl);
   d.actor=reg(g,1);d.pop=0.6+i*1.1;
 });
 // 中央被傳遞的問題光點
@@ -280,11 +285,12 @@ const aOrb=reg(orb,1);
 
 // ---------- 場景A：數字打架（ERP ≠ Excel） ----------
 const conflictGrp=new THREE.Group();
-{const mkP=(warm,x)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(6,3.8),new THREE.MeshBasicMaterial({map:panelTex(warm),transparent:true,opacity:0.9,side:THREE.DoubleSide,depthWrite:false}));m.position.set(x,4,0);return m;};
- conflictGrp.add(mkP(false,-5),mkP(true,5));
- const lE=makeSprite(['ERP'],{fs:40,color:'#cfe2f5',bg:'rgba(20,42,72,0.9)',h:1.5});lE.position.set(-5,6.7,0);conflictGrp.add(lE);
- const lX=makeSprite(['Excel'],{fs:40,color:'#ffd49a',bg:'rgba(74,46,20,0.9)',h:1.5});lX.position.set(5,6.7,0);conflictGrp.add(lX);
- const neq=makeSprite(['≠'],{fs:200,color:'#ff8a5c',h:5});neq.position.set(0,4,0.6);conflictGrp.add(neq);conflictGrp._neq=neq;}
+{const mkP=(warm,x)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(5.4,3.6),new THREE.MeshBasicMaterial({map:panelTex(warm),transparent:true,opacity:0.9,side:THREE.DoubleSide,depthWrite:false}));m.position.set(x,4,0);return m;};
+ conflictGrp.add(mkP(false,-7.6),mkP(true,0),mkP(false,7.6));
+ const mkL=(txt,col,bg,x)=>{const l=makeSprite([txt],{fs:46,color:col,bg:bg,h:1.7});l.position.set(x,6.6,0);conflictGrp.add(l);};
+ mkL('ERP','#cfe2f5','rgba(20,42,72,0.95)',-7.6);mkL('Excel','#ffd49a','rgba(74,46,20,0.95)',0);mkL('新得利','#a8eed0','rgba(20,52,38,0.95)',7.6);
+ const mkN=x=>{const n=makeSprite(['≠'],{fs:160,color:'#ff8a5c',h:3.8});n.position.set(x,4,0.6);conflictGrp.add(n);return n;};
+ conflictGrp._neq=[mkN(-3.8),mkN(3.8)];}
 const aConflict=reg(conflictGrp,1);
 // ---------- 場景B：不只一個品項（品項海） ----------
 const swarmGrp=new THREE.Group();
@@ -295,6 +301,11 @@ const swarmGrp=new THREE.Group();
  const hero=new THREE.Mesh(new THREE.PlaneGeometry(1.3,0.85),holoMat(0xffaa66,0.95));hero.position.set(1.7,1.2,0.12);swarmGrp.add(hero);}
 swarmGrp.position.set(0,5,-4);
 const aSwarm=reg(swarmGrp,1);
+
+// 場景3：表名標籤（HTML 疊層，跟旁白唸的節奏同步顯示）
+const LBL3=['庫存表','預估表','交期表','採購單','驗收紀錄','在途明細'];
+const L3AT=[0.8,1.7,2.6,3.5,4.4,5.3];
+const l3=[];{const el=document.getElementById('labels3d');LBL3.forEach(tx=>{const d=document.createElement('div');d.className='l3';d.textContent=tx;el.appendChild(d);l3.push(d);});}
 
 // 地面網格
 const grid=new THREE.GridHelper(120,60,0x2f6a8a,0x143040);grid.material.transparent=true;grid.material.opacity=0;grid.material.depthWrite=false;grid.position.y=0.02;scene.add(grid);
@@ -312,7 +323,7 @@ const SCN=[
  {cam:{p:[0,4.5,17],look:[0,5,-1],drift:[0,0,-6]}},     // 0 粒子問句
  {cam:{p:[0,5,15],look:[0,3.5,0],drift:[0,0,-2]}},      // 1 四同事包圍
  {cam:{p:[0,5,7],look:[0,4,-2],drift:[0,1,-1]}},        // 2 面板牢籠
- {cam:{p:[0,4.5,16],look:[0,4.5,0],drift:[0,0,-2]}},    // 3 數字打架（ERP≠Excel）
+ {cam:{p:[0,4.5,20],look:[0,4.5,0],drift:[0,0,-1.5]}},  // 3 數字打架（ERP≠Excel≠新得利）
  {cam:{p:[0,6.5,20],look:[0,5,0],drift:[0,1,6]}},       // 4 深夜塌縮
  {cam:{p:[0,5,10],look:[0,5,-4],drift:[0,0,8]}},        // 5 品項海拉遠
  {cam:{p:[0,4.5,19],look:[0,4.5,0],drift:[0,0,-2.5]}},  // 6 色溫翻轉+AI
@@ -384,7 +395,7 @@ const NARR=[
  '其實，這只是一個很簡單的問題。照理說，幾秒鐘就能回答。',
  '要回答它，我得問倉管、問生管、看採購進度、再等品管回覆。同一個答案，散在四位同事手上。',
  '庫存表、預估表、交期表、採購單、驗收紀錄、在途明細……六張表攤開，一張一張比對，耗掉一整個下午。',
- '更麻煩的是，ERP 跟 Excel 兩邊數字還對不起來。到底該信哪一個？',
+ '更麻煩的是，ERP、Excel、新得利，三邊數字還對不起來。到底該信哪一個？',
  '天黑了，忙了一整天。我最放不下的還是——這個答案，真的對嗎？',
  '而山苦瓜，只是這週要顧的幾百個品項，其中一個而已。',
  '那如果，有一位真正懂供應鏈的 AI 同事呢？你只要問一句，剩下的都交給它。',
@@ -455,9 +466,12 @@ function render(dt){
        p.group.position.set(Math.cos(ang)*rad,yy,Math.sin(ang)*rad);
        p.group.lookAt(0,yy,0);}});}
 
+  // ---- 場景3 表名標籤（跟旁白同步） ----
+  {const inS3=(i===2);for(let k=0;k<l3.length;k++)l3[k].style.opacity=inS3?smooth((ls-L3AT[k])/0.7).toFixed(2):'0';}
+
   // ---- 場景A（index3）：數字打架（ERP≠Excel） ----
   {aConflict.vis=lerp(aConflict.vis,(i===3?1:0),dt*2.6);setVis(aConflict,aConflict.vis);
-   if(aConflict.group.visible&&conflictGrp._neq){const ps=1+0.16*Math.sin(T*5);conflictGrp._neq.scale.set(5*ps,5*ps,1);}}
+   if(aConflict.group.visible&&conflictGrp._neq){const ps=1+0.16*Math.sin(T*5);conflictGrp._neq.forEach(n=>n.scale.set(3.8*ps,3.8*ps,1));}}
 
   // ---- 場景B（index5）：不只一個品項（品項海） ----
   {aSwarm.vis=lerp(aSwarm.vis,(i===5?1:0),dt*2.2);setVis(aSwarm,easeOut(aSwarm.vis));}
