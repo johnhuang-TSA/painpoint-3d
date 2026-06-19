@@ -319,8 +319,8 @@ const NARR=[
  '其實，只是一個很簡單的問題。照理說，幾秒鐘就能回答。',
  '不過要回答它，我得先問問倉管，再請教生管，接著確認採購的進度，最後還要等品管回覆。同一個答案，分散在四個部門手上。',
  '庫存、預估、交期、採購、驗收……資料分在五六張表裡，我一張一張慢慢比對，花了大半個下午，還是不太容易完全兜起來。',
- '不知不覺，天就黑了。忙了一整天，我心裡最放不下的，還是那個問題——這個答案，真的算對了嗎？',
- '那麼，如果有一位真正懂供應鏈的 AI 同事，會是什麼樣子呢？我們只要開口問一句，剩下的就交給它。',
+ '天都黑了，忙了一整天。我最放不下的，還是——這個答案，真的算對了嗎？',
+ '那如果，有一位真正懂供應鏈的 AI 同事呢？你只要問一句，剩下的就交給它。',
  '同樣的問題，再問一次。這一次，只要幾秒，答案就在眼前。隨時想問，隨時都能得到回應。'
 ];
 const N={on:true,active:false,voice:null,pending:null,guard:null,cur:null,sup:('speechSynthesis' in window)};
@@ -329,8 +329,8 @@ if(N.sup){pickV();speechSynthesis.onvoiceschanged=pickV;}
 function duck(){if(M.master)M.master.gain.value=M.muted?0:(N.on&&N.active?M.vol*0.45:M.vol);}
 function stopN(){if(!N.sup)return;clearTimeout(N.pending);clearTimeout(N.guard);N.cur=null;speechSynthesis.cancel();N.active=false;duck();}
 function speak(i){if(!N.sup)return;stopN();if(!N.on)return;const txt=NARR[i];if(!txt)return;N.active=true;duck();
-  N.pending=setTimeout(()=>{const u=new SpeechSynthesisUtterance(txt);if(N.voice)u.voice=N.voice;u.lang=N.voice?N.voice.lang:'zh-TW';u.rate=(i<=3?0.97:1.0);u.pitch=1;u.volume=1;N.cur=u;u.onend=u.onerror=()=>{if(N.cur===u){N.active=false;duck();}};speechSynthesis.speak(u);},650);
-  N.guard=setTimeout(()=>{N.active=false;duck();},60000);}
+  N.pending=setTimeout(()=>{const u=new SpeechSynthesisUtterance(txt);if(N.voice)u.voice=N.voice;u.lang=N.voice?N.voice.lang:'zh-TW';u.rate=(i<=3?0.97:1.0);u.pitch=1;u.volume=1;N.cur=u;u.onend=u.onerror=()=>{if(N.cur===u){N.active=false;duck();}};speechSynthesis.speak(u);},450);
+  N.guard=setTimeout(()=>{N.active=false;duck();},22000);}
 
 // ============================================================
 //  幕進入
@@ -428,7 +428,14 @@ function render(dt){
 // ---------- 主迴圈 ----------
 let _lw=0,_lh=0;
 function checkResize(){if(innerWidth===_lw&&innerHeight===_lh)return;_lw=innerWidth;_lh=innerHeight;camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);if(useComposer)composer.setSize(innerWidth,innerHeight);}
-function loop(now){perfNow=now;if(!lastTs)lastTs=now;let dt=(now-lastTs)/1000;lastTs=now;if(dt>0.1)dt=0.1;checkResize();if(started&&playing){t+=dt;if(t>=TOTAL){t=TOTAL;playing=false;}}render(dt);if(started)musicTick();requestAnimationFrame(loop);}
+function loop(now){perfNow=now;if(!lastTs)lastTs=now;let dt=(now-lastTs)/1000;lastTs=now;if(dt>0.1)dt=0.1;checkResize();
+  if(started&&playing){
+    const ci=sceneAt(t);let nt=t+dt;
+    // 聲畫同步：旁白還沒唸完就在該幕結尾等候
+    if(N.on&&N.active&&ci<DUR.length-1&&nt>=B[ci+1])nt=Math.min(nt,B[ci+1]-0.01);
+    t=nt;if(t>=TOTAL){t=TOTAL;playing=false;}
+  }
+  render(dt);if(started)musicTick();requestAnimationFrame(loop);}
 
 // ---------- 控制 ----------
 function resetActors(){ACT.forEach(a=>{a.vis=0;setVis(a,0);});tMat.opacity=0;lineMat.opacity=0;dMat.opacity=0;DEPT.forEach(d=>d.actor.vis=0);}
