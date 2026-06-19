@@ -71,7 +71,9 @@
   <div class="sub center big" id="s1">山苦瓜，下週會不會缺貨？</div>
   <div class="sub lower mid" id="s2"><b class="hot">一個問題</b>，被切成四塊。</div>
   <div class="sub lower mid" id="s3">第六張，<b class="hot">還沒對完</b>。</div>
+  <div class="sub lower mid" id="sA">ERP 一個數，Excel 另一個數。到底，<b class="hot">信哪一個</b>？</div>
   <div class="sub center big" id="s4"><span class="mid dim" style="display:block;margin-bottom:1.5vh">忙了一整天。</span>還是不確定——算得<b class="hot">對不對</b>。</div>
+  <div class="sub lower mid" id="sB">而這，只是這週的<b class="hot">其中一個</b>品項。</div>
   <div class="sub lower big" id="s5" style="bottom:13%"><span class="dim">如果……</span> 有一個<span class="warm">「懂供應鏈的 AI 同事」</span>？</div>
   <div class="sub lower big" id="s6" style="bottom:11%"><span class="dim mid" style="display:block;margin-bottom:1.2vh">山苦瓜，下週會不會缺貨？</span><span class="warm">「不會。我幫你看過了。」</span><span class="warm" style="letter-spacing:.3em;display:inline-block;margin-left:.6em">隨問，隨答。</span></div>
 </div>
@@ -276,27 +278,47 @@ orbGlow.scale.set(2.2,2.2,1);orb.add(orbGlow);
 orb.position.set(1.4,4.3,3.6);
 const aOrb=reg(orb,1);
 
+// ---------- 場景A：數字打架（ERP ≠ Excel） ----------
+const conflictGrp=new THREE.Group();
+{const mkP=(warm,x)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(6,3.8),new THREE.MeshBasicMaterial({map:panelTex(warm),transparent:true,opacity:0.9,side:THREE.DoubleSide,depthWrite:false}));m.position.set(x,4,0);return m;};
+ conflictGrp.add(mkP(false,-5),mkP(true,5));
+ const lE=makeSprite(['ERP'],{fs:40,color:'#cfe2f5',bg:'rgba(20,42,72,0.9)',h:1.5});lE.position.set(-5,6.7,0);conflictGrp.add(lE);
+ const lX=makeSprite(['Excel'],{fs:40,color:'#ffd49a',bg:'rgba(74,46,20,0.9)',h:1.5});lX.position.set(5,6.7,0);conflictGrp.add(lX);
+ const neq=makeSprite(['≠'],{fs:200,color:'#ff8a5c',h:5});neq.position.set(0,4,0.6);conflictGrp.add(neq);conflictGrp._neq=neq;}
+const aConflict=reg(conflictGrp,1);
+// ---------- 場景B：不只一個品項（品項海） ----------
+const swarmGrp=new THREE.Group();
+{const cols=16,rows=10;const sgeo=new THREE.PlaneGeometry(1.3,0.85);const smat=new THREE.MeshBasicMaterial({color:0x46689a,transparent:true,opacity:0.6,depthWrite:false,side:THREE.DoubleSide});
+ const inst=new THREE.InstancedMesh(sgeo,smat,cols*rows);const M4=new THREE.Matrix4();let n=0;
+ for(let r=0;r<rows;r++)for(let cc=0;cc<cols;cc++){M4.makeTranslation((cc-(cols-1)/2)*1.7,(r-(rows-1)/2)*1.2,0);inst.setMatrixAt(n++,M4);}
+ swarmGrp.add(inst);
+ const hero=new THREE.Mesh(new THREE.PlaneGeometry(1.3,0.85),holoMat(0xffaa66,0.95));hero.position.set(1.7,1.2,0.12);swarmGrp.add(hero);}
+swarmGrp.position.set(0,5,-4);
+const aSwarm=reg(swarmGrp,1);
+
 // 地面網格
 const grid=new THREE.GridHelper(120,60,0x2f6a8a,0x143040);grid.material.transparent=true;grid.material.opacity=0;grid.material.depthWrite=false;grid.position.y=0.02;scene.add(grid);
 
 // ============================================================
 //  時間軸
 // ============================================================
-const DUR=[8,16,16,8,9,3];
+const DUR=[7,11,10,7,5,7,9,4]; // 8 幕＝60 秒
 const B=[0];DUR.forEach(d=>B.push(B[B.length-1]+d));
 const TOTAL=B[B.length-1];
 let t=0,playing=false,started=false,lastTs=0;
 
 // 每幕：相機 + 系統目標
 const SCN=[
- {cam:{p:[0,4.5,17],look:[0,5,-1],drift:[0,0,-6]}},   // 1 粒子問句
- {cam:{p:[0,5,15],look:[0,3.5,0],drift:[0,0,-2]}},    // 2 四部門包圍
- {cam:{p:[0,5,7],look:[0,4,-2],drift:[0,1,-1]}},      // 3 面板牢籠
- {cam:{p:[0,6.5,20],look:[0,5,0],drift:[0,1,6]}},     // 4 塌縮死寂
- {cam:{p:[0,4.5,19],look:[0,4.5,0],drift:[0,0,-2.5]}},  // 5 色溫翻轉+AI
- {cam:{p:[0,4.5,14],look:[0,4.5,1],drift:[0,0,-2]}},    // 6 遞光球收尾
+ {cam:{p:[0,4.5,17],look:[0,5,-1],drift:[0,0,-6]}},     // 0 粒子問句
+ {cam:{p:[0,5,15],look:[0,3.5,0],drift:[0,0,-2]}},      // 1 四同事包圍
+ {cam:{p:[0,5,7],look:[0,4,-2],drift:[0,1,-1]}},        // 2 面板牢籠
+ {cam:{p:[0,4.5,16],look:[0,4.5,0],drift:[0,0,-2]}},    // 3 數字打架（ERP≠Excel）
+ {cam:{p:[0,6.5,20],look:[0,5,0],drift:[0,1,6]}},       // 4 深夜塌縮
+ {cam:{p:[0,5,10],look:[0,5,-4],drift:[0,0,8]}},        // 5 品項海拉遠
+ {cam:{p:[0,4.5,19],look:[0,4.5,0],drift:[0,0,-2.5]}},  // 6 色溫翻轉+AI
+ {cam:{p:[0,4.5,14],look:[0,4.5,1],drift:[0,0,-2]}},    // 7 遞光球收尾
 ];
-const SUBS={0:'s1',1:'s2',2:'s3',3:'s4',4:'s5',5:'s6'};
+const SUBS={0:'s1',1:'s2',2:'s3',3:'sA',4:'s4',5:'sB',6:'s5',7:'s6'};
 
 // 顏色弧線（冷→暖）
 const cold=new THREE.Color(0x04070d), coldFog=new THREE.Color(0x06101c);
@@ -333,36 +355,40 @@ function padChord(fr){if(!M.ctx)return;const now=M.ctx.currentTime;M.padOsc.forE
 function piano(t0,f,v,dur){const c=M.ctx;dur=dur||2.6;const g=c.createGain();g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(v,t0+0.02);g.gain.exponentialRampToValueAtTime(0.0008,t0+dur);const o=c.createOscillator();o.type='sine';o.frequency.value=f;const o2=c.createOscillator();o2.type='sine';o2.frequency.value=f*2.001;const g2=c.createGain();g2.gain.value=0.16;o.connect(g);o2.connect(g2);g2.connect(g);g.connect(M.bus);o.start(t0);o2.start(t0);o.stop(t0+dur+0.1);o2.stop(t0+dur+0.1);}
 function pianoChord(t0,fr,v){fr.forEach((f,k)=>piano(t0+k*0.09,f,v*0.7,3.4));}
 function subPulse(t0,v){const c=M.ctx;const o=c.createOscillator();o.type='sine';o.frequency.setValueAtTime(76,t0);o.frequency.exponentialRampToValueAtTime(44,t0+0.18);const g=c.createGain();g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(v,t0+0.02);g.gain.exponentialRampToValueAtTime(0.001,t0+0.5);o.connect(g);g.connect(M.master);o.start(t0);o.stop(t0+0.55);}
-const CHORDS=[[146.83,174.61,220,293.66],[146.83,174.61,220,261.63],[146.83,174.61,220,311.13],[146.83,220,293.66,440],[116.54,146.83,174.61,233.08],[174.61,220,261.63,349.23]];
-const PADLV=[0.07,0.08,0.12,0.045,0.095,0.1];
-const PADCUT=[1100,1300,1600,800,2600,3200];
+const CHORDS=[[146.83,174.61,220,293.66],[146.83,174.61,220,261.63],[146.83,174.61,220,311.13],[146.83,174.61,207.65,311.13],[146.83,220,293.66,440],[110,146.83,174.61,220],[116.54,146.83,174.61,233.08],[174.61,220,261.63,349.23]];
+const PADLV=[0.07,0.08,0.12,0.115,0.045,0.1,0.095,0.1];
+const PADCUT=[1100,1300,1600,1400,800,1150,2600,3200];
 function musicScene(i){if(!M.ctx)return;const c=M.ctx,now=c.currentTime;padChord(CHORDS[i]||CHORDS[0]);
   M.padGain.gain.cancelScheduledValues(now);M.padGain.gain.setValueAtTime(M.padGain.gain.value,now);
   if(i!==2)M.padGain.gain.linearRampToValueAtTime(PADLV[i],now+1.3);
   M.padFilt.frequency.setTargetAtTime(PADCUT[i],now,0.9);
-  if(i===4)pianoChord(now+0.2,[233.08,293.66,349.23,466.16],0.085);
-  if(i===5)pianoChord(now+0.2,[349.23,440,523.25],0.08);}
+  if(i===6)pianoChord(now+0.2,[233.08,293.66,349.23,466.16],0.085);
+  if(i===7)pianoChord(now+0.2,[349.23,440,523.25],0.08);}
 function musicTick(){if(!M.ctx)return;const c=M.ctx;if(c.state==='suspended'){c.resume();return;}const i=sceneAt(t),ls=t-B[i];
-  if(i===2&&M.padGain){const rise=Math.min(1,ls/11);const trem=1+0.14*Math.sin(c.currentTime*5.5);M.padGain.gain.value=(0.05+0.1*rise)*trem;M.padFilt.frequency.value=850+rise*1500;}
+  if(i===2&&M.padGain){const rise=Math.min(1,ls/9);const trem=1+0.14*Math.sin(c.currentTime*5.5);M.padGain.gain.value=(0.05+0.1*rise)*trem;M.padFilt.frequency.value=850+rise*1500;}
   while(M.sched<c.currentTime+0.2){const tt=M.sched;
     if(i===0){if(M.beat%16===0)piano(tt,392.0,0.06,3.2);if(M.beat%16===9)piano(tt,329.63,0.045,3);}
     else if(i===1){if(M.beat%8===0)subPulse(tt,0.15);if(M.beat%16===6)piano(tt,293.66,0.055,2.8);}
     else if(i===2){const d=2+Math.floor(ls/3);if(M.beat%Math.max(2,7-d)===0)subPulse(tt,0.14);if(M.beat%14===0)piano(tt,311.13,0.05,2.2);}
-    else if(i===3){if(M.beat%26===0)piano(tt,349.23,0.06,3.8);}
-    else if(i===4){if(M.beat%6===0)piano(tt,[233.08,293.66,349.23,466.16][(M.beat/6)%4|0],0.075,2.8);}
-    else if(i===5){if(M.beat%8===0)piano(tt,[349.23,440,523.25][(M.beat/8)%3|0],0.07,3);}
+    else if(i===3){if(M.beat%4===0)piano(tt,(M.beat/4)%2?293.66:311.13,0.06,1.6);if(M.beat%8===0)subPulse(tt,0.13);}
+    else if(i===4){if(M.beat%26===0)piano(tt,349.23,0.06,3.8);}
+    else if(i===5){const d=Math.floor(ls/2);if(M.beat%Math.max(3,8-d)===0)subPulse(tt,0.2);if(M.beat%16===0)piano(tt,174.61,0.06,2.4);}
+    else if(i===6){if(M.beat%6===0)piano(tt,[233.08,293.66,349.23,466.16][(M.beat/6)%4|0],0.075,2.8);}
+    else if(i===7){if(M.beat%8===0)piano(tt,[349.23,440,523.25][(M.beat/8)%3|0],0.07,3);}
     M.sched+=60/120/2;M.beat++;}}
 
 // ============================================================
 //  旁白（Web Speech）
 // ============================================================
 const NARR=[
- '其實，只是一個很簡單的問題。照理說，幾秒鐘就能回答。',
- '不過要回答它，我得先問問倉管，再請教生管，接著確認採購進度，最後還要等品管回覆。同一個答案，分散在四位同事手上。',
- '庫存表、預估表、交期表、採購單、驗收紀錄、在途明細……六張表攤開來，一張一張慢慢比對，花了大半個下午，還是很難完全兜得起來。',
- '天都黑了，忙了一整天。我最放不下的，還是——這個答案，真的算對了嗎？',
- '那如果，有一位真正懂供應鏈的 AI 同事呢？你只要問一句，剩下的就交給它。',
- '同樣的問題，再問一次。這一次，只要幾秒，答案就在眼前。隨時想問，隨時都能得到回應。'
+ '其實，這只是一個很簡單的問題。照理說，幾秒鐘就能回答。',
+ '要回答它，我得問倉管、問生管、看採購進度、再等品管回覆。同一個答案，散在四位同事手上。',
+ '庫存表、預估表、交期表、採購單、驗收紀錄、在途明細……六張表攤開，一張一張比對，耗掉一整個下午。',
+ '更麻煩的是，ERP 跟 Excel 兩邊數字還對不起來。到底該信哪一個？',
+ '天黑了，忙了一整天。我最放不下的還是——這個答案，真的對嗎？',
+ '而山苦瓜，只是這週要顧的幾百個品項，其中一個而已。',
+ '那如果，有一位真正懂供應鏈的 AI 同事呢？你只要問一句，剩下的都交給它。',
+ '同樣的問題，再問一次。這一次，只要幾秒就有答案。隨問，隨答。'
 ];
 const N={on:true,active:false,voice:null,pending:null,guard:null,cur:null,sup:('speechSynthesis' in window)};
 function pickV(){if(!N.sup)return;const vs=speechSynthesis.getVoices();N.voice=vs.find(v=>/zh[-_]TW/i.test(v.lang))||vs.find(v=>/zh[-_]HK/i.test(v.lang))||vs.find(v=>/^zh/i.test(v.lang))||null;}
@@ -381,7 +407,7 @@ function onEnter(i){musicScene(i);speak(i);}
 // ============================================================
 //  渲染
 // ============================================================
-function sceneOpacity(i){const s=B[i],e=B[i+1],F=1.2,H=0.6;let inn=(i===0)?smooth(t/1.6):smooth((t-(s-H))/F);let out=(i===5)?1:(1-smooth((t-(e-H))/F));return clamp(inn*out,0,1);}
+function sceneOpacity(i){const s=B[i],e=B[i+1],F=1.2,H=0.6;let inn=(i===0)?smooth(t/1.6):smooth((t-(s-H))/F);let out=(i===7)?1:(1-smooth((t-(e-H))/F));return clamp(inn*out,0,1);}
 const _v=new THREE.Vector3();let perfNow=0;
 const lerp=(a,b,k)=>a+(b-a)*Math.min(1,k);
 
@@ -391,18 +417,18 @@ function render(dt){
   const ls=t-B[i],lp=clamp(ls/DUR[i],0,1),T=perfNow*0.001;
 
   // ---- 色溫即光源（場景5 翻轉）----
-  const warmth=smooth((t-(B[4]+1))/3.5); // 場景5 開始染暖
+  const warmth=smooth((t-(B[6]+1))/3.5); // 一抹希望（index6）開始染暖
   scene.background.copy(cold).lerp(warm,warmth);
   scene.fog.color.copy(coldFog).lerp(warmFog,warmth);
   keyLight.color.copy(coldKey).lerp(warmKey,warmth);
-  keyLight.intensity=lerp(keyLight.intensity,(i===3?0.35:0.85)+warmth*0.45,dt*2);
-  hemi.intensity=lerp(hemi.intensity,(i===3?0.25:0.4)+warmth*0.2,dt*2);
-  if(bloom)bloom.strength=lerp(bloom.strength,(i===3?0.3:0.48)+warmth*0.18,dt*2);
+  keyLight.intensity=lerp(keyLight.intensity,(i===4?0.35:0.85)+warmth*0.45,dt*2);
+  hemi.intensity=lerp(hemi.intensity,(i===4?0.25:0.4)+warmth*0.2,dt*2);
+  if(bloom)bloom.strength=lerp(bloom.strength,(i===4?0.3:0.48)+warmth*0.18,dt*2);
 
   // ---- 場景1：環境光點緩緩飄移（氛圍，不拼字）----
   {for(let k=0;k<TN;k++){tPos[k*3]=tStart[k*3]+Math.sin(T*0.3+k)*0.4;tPos[k*3+1]=tStart[k*3+1]+Math.cos(T*0.25+k*1.3)*0.3;tPos[k*3+2]=tStart[k*3+2];}
    tGeo.attributes.position.needsUpdate=true;
-   let op=(i===0)?smooth(ls/2)* (1-smooth((ls-6.5)/1.2)) :0;
+   let op=(i===0)?smooth(ls/2)* (1-smooth((ls-5.5)/1.2)) :0;
    tMat.opacity=op*0.5;tPts.visible=op>0.01;}
 
   // ---- 場景2：四部門 + 問題光點彈跳 + 纏線 ----
@@ -424,29 +450,36 @@ function render(dt){
 
   // ---- 場景3：六張玻璃面板環繞牢籠 ----
   {PANELS.forEach((p,k)=>{const tg=(i===2)?1:0;p.vis=lerp(p.vis,tg,dt*2.2);setVis(p,p.vis);
-     if(p.group.visible){const ang=T*0.25+k/PN*Math.PI*2;const rad=10-easeOut(clamp(ls/12,0,1))*3.5; // 越收越近
+     if(p.group.visible){const ang=T*0.25+k/PN*Math.PI*2;const rad=10-easeOut(clamp(ls/8,0,1))*3.5; // 越收越近
        const yy=3+Math.sin(T*0.6+k)*1.5+ (k%3)*1.2;
        p.group.position.set(Math.cos(ang)*rad,yy,Math.sin(ang)*rad);
        p.group.lookAt(0,yy,0);}});}
 
-  // ---- 場景4：面板塌縮成光塵 + 21:47 ----
-  {const tg=(i===3)?1:0;dMat.opacity=lerp(dMat.opacity,tg*0.85,dt*1.5);dust.visible=dMat.opacity>0.01;
-   if(dust.visible){for(let k=0;k<DN;k++){dPos[k*3]+=dVel[k*3]*dt;dPos[k*3+1]+=dVel[k*3+1]*dt;dPos[k*3+2]+=dVel[k*3+2]*dt;if(dPos[k*3+1]<0){dPos[k*3+1]=14;}}dGeo.attributes.position.needsUpdate=true;}
-   document.getElementById('clock3d').style.opacity=(i===3?smooth(ls/0.5):0).toFixed(3);}
+  // ---- 場景A（index3）：數字打架（ERP≠Excel） ----
+  {aConflict.vis=lerp(aConflict.vis,(i===3?1:0),dt*2.6);setVis(aConflict,aConflict.vis);
+   if(aConflict.group.visible&&conflictGrp._neq){const ps=1+0.16*Math.sin(T*5);conflictGrp._neq.scale.set(5*ps,5*ps,1);}}
 
-  // ---- 場景5-6：暖金 AI 同事 + 光球 ----
-  {aAlly.vis=lerp(aAlly.vis,(i>=4?1:0),dt*1.8);setVis(aAlly,easeOut(aAlly.vis));
+  // ---- 場景B（index5）：不只一個品項（品項海） ----
+  {aSwarm.vis=lerp(aSwarm.vis,(i===5?1:0),dt*2.2);setVis(aSwarm,easeOut(aSwarm.vis));}
+
+  // ---- 場景4（index4）：面板塌縮成光塵 + 21:47 ----
+  {const tg=(i===4)?1:0;dMat.opacity=lerp(dMat.opacity,tg*0.85,dt*1.5);dust.visible=dMat.opacity>0.01;
+   if(dust.visible){for(let k=0;k<DN;k++){dPos[k*3]+=dVel[k*3]*dt;dPos[k*3+1]+=dVel[k*3+1]*dt;dPos[k*3+2]+=dVel[k*3+2]*dt;if(dPos[k*3+1]<0){dPos[k*3+1]=14;}}dGeo.attributes.position.needsUpdate=true;}
+   document.getElementById('clock3d').style.opacity=(i===4?smooth(ls/0.5):0).toFixed(3);}
+
+  // ---- 場景6-7：暖金 AI 同事 + 光球 ----
+  {aAlly.vis=lerp(aAlly.vis,(i>=6?1:0),dt*1.8);setVis(aAlly,easeOut(aAlly.vis));
    if(aAlly.group.visible)ally.position.y=0.4*Math.sin(T*1.4);
-   aOrb.vis=lerp(aOrb.vis,(i===5?1:0),dt*2.2);setVis(aOrb,aOrb.vis);
+   aOrb.vis=lerp(aOrb.vis,(i===7?1:0),dt*2.2);setVis(aOrb,aOrb.vis);
    if(aOrb.group.visible)orb.position.set(1.4,4.3+0.18*Math.sin(T*2),3.6+easeOut(lp)*1.2);}
 
   // 地面網格
-  grid.material.opacity=lerp(grid.material.opacity,[0.1,0.25,0.2,0.1,0.3,0.4][i],dt*1.5);
+  grid.material.opacity=lerp(grid.material.opacity,[0.1,0.25,0.2,0.18,0.1,0.16,0.3,0.4][i],dt*1.5);
 
   // ---- 字幕 ----
   for(const k in SUBS)document.getElementById(SUBS[k]).style.opacity='0';
   if(SUBS[i]){const el=document.getElementById(SUBS[i]);let op;
-    if(i===0)op=smooth((ls-0.6)/1.2);else if(i===5)op=smooth((ls-0.3)/1.0);else if(i===1)op=smooth((ls-1.0)/1.2);else if(i===2)op=smooth((ls-1.5)/1.2);else if(i===4)op=smooth((ls-0.6)/1.6);else op=smooth((ls-1.0)/1.6);
+    if(i===0)op=smooth((ls-0.6)/1.2);else if(i===1)op=smooth((ls-1.0)/1.2);else if(i===2)op=smooth((ls-1.5)/1.2);else if(i===3)op=smooth((ls-1.4)/1.0);else if(i===4)op=smooth((ls-0.6)/1.6);else if(i===5)op=smooth((ls-3.6)/1.0);else if(i===6)op=smooth((ls-0.3)/1.0);else op=smooth((ls-1.0)/1.6);
     el.style.opacity=op.toFixed(3);}
 
   // ---- 相機 ----
@@ -454,7 +487,7 @@ function render(dt){
     _v.copy(camTo.pos).addScaledVector(camTo.drift,lp);
     // 第一人稱手持晃動；場景4 下沉失焦感
     _v.x+=Math.sin(T*1.3)*0.25+Math.sin(T*0.7)*0.15;_v.y+=Math.sin(T*1.1)*0.18;
-    if(i===3){_v.y-=easeOut(lp)*1.5;}
+    if(i===4){_v.y-=easeOut(lp)*1.5;}
     camera.position.lerpVectors(camFrom.pos,_v,e);
     curLook.lerpVectors(camFrom.look,camTo.look,e);camera.lookAt(curLook);controls.target.copy(curLook);
   }else{controls.update();curLook.copy(controls.target);}
@@ -499,7 +532,7 @@ addEventListener('keydown',e=>{
 });
 
 // ===== 分段流程列 + 控制列 =====
-const PHN=['一句話的問題','被切成四塊','被表淹沒','深夜不確定','一抹希望','隨問隨答'];
+const PHN=['一句話的問題','被切成四塊','被表淹沒','數字打架','深夜不確定','不只一個品項','一抹希望','隨問隨答'];
 const tlPhasesEl=document.getElementById('tlPhases');
 const bp2=document.getElementById('btnPlay2');
 const btnCam=document.getElementById('btnCam');
