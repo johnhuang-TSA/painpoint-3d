@@ -545,9 +545,12 @@ if(N.sup){pickV();speechSynthesis.onvoiceschanged=pickV;}
 buildLangSel();
 function duck(){if(M.master)M.master.gain.value=M.muted?0:(N.on&&N.active?M.vol*0.45:M.vol);}
 function stopN(){if(!N.sup)return;clearTimeout(N.pending);clearTimeout(N.guard);N.cur=null;speechSynthesis.cancel();N.active=false;duck();}
+function doSpeak(i){const txt=NARR[i];if(!txt)return;const u=new SpeechSynthesisUtterance(txt);if(N.voice)u.voice=N.voice;u.lang=N.voice?N.voice.lang:L.code;u.rate=(i<=3?0.97:1.0);u.pitch=1;u.volume=1;N.cur=u;u.onend=u.onerror=()=>{if(N.cur===u){N.active=false;duck();}};try{speechSynthesis.speak(u);}catch(e){}}
 function speak(i){if(!N.sup)return;stopN();if(!N.on)return;const txt=NARR[i];if(!txt)return;N.active=true;duck();
-  N.pending=setTimeout(()=>{const u=new SpeechSynthesisUtterance(txt);if(N.voice)u.voice=N.voice;u.lang=N.voice?N.voice.lang:L.code;u.rate=(i<=3?0.97:1.0);u.pitch=1;u.volume=1;N.cur=u;u.onend=u.onerror=()=>{if(N.cur===u){N.active=false;duck();}};speechSynthesis.speak(u);},450);
+  N.pending=setTimeout(()=>doSpeak(i),450);
   N.guard=setTimeout(()=>{N.active=false;duck();},22000);}
+// 在使用者手勢內「立即」唸（解鎖 iOS/手機 TTS）
+function speakNow(i){if(!N.sup||!N.on)return;stopN();const txt=NARR[i];if(!txt)return;N.active=true;duck();doSpeak(i);N.guard=setTimeout(()=>{N.active=false;duck();},22000);}
 
 // ============================================================
 //  幕進入
@@ -667,10 +670,9 @@ function loop(now){perfNow=now;if(!lastTs)lastTs=now;let dt=(now-lastTs)/1000;la
 
 // ---------- 控制 ----------
 function resetActors(){ACT.forEach(a=>{a.vis=0;setVis(a,0);});tMat.opacity=0;lineMat.opacity=0;dMat.opacity=0;DEPT.forEach(d=>d.actor.vis=0);}
-// 手機（尤其 iOS）需在使用者手勢內解鎖音訊與語音
-function unlockAudio(){try{if(M.ctx&&M.ctx.state==='suspended')M.ctx.resume();}catch(e){}
-  if(N.sup){try{const wu=new SpeechSynthesisUtterance('');wu.volume=0;speechSynthesis.speak(wu);}catch(e){}}}
-function begin(){started=true;playing=true;t=0;lastTs=0;sceneIdx=-1;resetActors();document.getElementById('start').classList.add('hide');document.getElementById('bottomUI').classList.add('show');document.body.classList.add('cine');camMode='cine';initAudio();unlockAudio();gotoScene(0);try{const el=document.documentElement;if(el.requestFullscreen)el.requestFullscreen().catch(()=>{});}catch(e){}}
+// 手機（尤其 iOS）需在使用者手勢內解鎖音訊
+function unlockAudio(){try{if(M.ctx&&M.ctx.state==='suspended')M.ctx.resume();}catch(e){}}
+function begin(){started=true;playing=true;t=0;lastTs=0;sceneIdx=0;resetActors();document.getElementById('start').classList.add('hide');document.getElementById('bottomUI').classList.add('show');document.body.classList.add('cine');camMode='cine';initAudio();unlockAudio();gotoScene(0);musicScene(0);speakNow(0);try{const el=document.documentElement;if(el.requestFullscreen)el.requestFullscreen().catch(()=>{});}catch(e){}}
 function nextScene(){if(!started)return;for(let i=1;i<B.length;i++){if(B[i]>t+0.05){t=B[i];if(t>=TOTAL){t=TOTAL;playing=false;}return;}}t=TOTAL;playing=false;}
 function replay(){if(!started){begin();return;}t=0;playing=true;lastTs=0;sceneIdx=-1;resetActors();stopN();camMode='cine';gotoScene(0);}
 function toggle(){if(!started||t>=TOTAL)return;playing=!playing;if(!playing)stopN();}
