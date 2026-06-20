@@ -174,7 +174,7 @@ const DEG=Math.PI/180;
 
 const canvas=document.getElementById('c3d');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
-renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,innerWidth<860?1.3:2)); // 手機降 pixelRatio 省效能
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x04070d);
 scene.fog=new THREE.FogExp2(0x04070d,0.012);
@@ -424,7 +424,7 @@ function musicScene(i){if(!M.ctx)return;const c=M.ctx,now=c.currentTime,st=ST();
   M.padFilt.frequency.setTargetAtTime(PADCUT[i]*st.cutMul,now,0.9);
   if(i===6)pianoChord(now+0.2,[233.08,293.66,349.23,466.16],0.085*st.pianoMul);
   if(i===7)pianoChord(now+0.2,[349.23,440,523.25],0.08*st.pianoMul);}
-function musicTick(){if(!M.ctx)return;const c=M.ctx;if(c.state==='suspended'){c.resume();return;}const i=sceneAt(t),ls=t-B[i],st=ST();
+function musicTick(){if(!M.ctx)return;const c=M.ctx;if(!playing)return;if(c.state==='suspended'){c.resume();return;}const i=sceneAt(t),ls=t-B[i],st=ST();
   const P=(t0,f,v,d)=>piano(t0,f,v*st.pianoMul,d);const SP=(t0,v)=>{if(st.pulseMul>0.01)subPulse(t0,v*st.pulseMul);};
   if(i===2&&M.padGain){const rise=Math.min(1,ls/9);const trem=1+0.14*Math.sin(c.currentTime*5.5);M.padGain.gain.value=(0.05+0.1*rise)*trem*st.padMul;M.padFilt.frequency.value=(850+rise*1500)*st.cutMul;}
   const ARP=[392.0,440,523.25,587.33,659.25];
@@ -469,7 +469,7 @@ const LANG={
    "It's actually a very simple question. In theory, it should take just seconds to answer.",
    "But to answer it, I have to ask the warehouse, ask planning, check purchasing, then wait for QC. One answer, scattered across four colleagues.",
    "Stock sheet, forecast, lead-time, purchase orders, receiving records, QC logs... six sheets spread out, cross-checked one by one — a whole afternoon, gone.",
-   "Worse still, ERP and 新得利 don't even agree. Which number do I trust?",
+   "Worse still, ERP and the second inventory system don't even agree. Which number do I trust?",
    "Night falls. A whole day's work. And what I still can't shake is — is this answer even right?",
    "And bitter gourd is just one of the hundreds of items I'm watching this week.",
    "But what if there were an AI teammate who truly understood supply chain? You just ask, and it handles the rest.",
@@ -490,7 +490,7 @@ const LANG={
    '厄介なのは、ERPと新得利で数字が合わないこと。どちらを信じればいい？',
    '日が暮れ、丸一日働いた。それでも引っかかるのは——この答え、本当に正しい？',
    'そしてゴーヤは、今週見るべき数百の品目のひとつにすぎない。',
-   'もし、供給網を本当に理解したAIの同僚がいたら？ひと言聞くだけで、あとは全部任せられる。',
+   'もし、サプライチェーンを本当に理解したAIの同僚がいたら？ひと言聞くだけで、あとは全部任せられる。',
    '同じ質問を、もう一度。今度は数秒で答えが出る。聞けば、すぐ答える。'],
   q:'ゴーヤ、来週は欠品する？',ans:'「いいえ。確認しておきました。」',slogan:'聞けば、すぐ答える。',
   depts:['倉庫','生産','購買','品質'],tables:['在庫表','予測表','納期表','発注書','検収記録','品質検査'],
@@ -499,11 +499,11 @@ const LANG={
   sA:'ERPとひとつ、新得利と別の数字。<b class="hot">どっちを信じる</b>？',
   s4:'<span class="mid dim" style="display:block;margin-bottom:1.5vh">丸一日働いた。</span>それでも確信が持てない——<b class="hot">合っているか</b>。',
   sB:'これは、今週の<b class="hot">ひとつの品目</b>にすぎない。',
-  s5:'<span class="dim">もし……</span> <span class="warm">「供給網を理解したAIの同僚」</span>がいたら？'}
+  s5:'<span class="dim">もし……</span> <span class="warm">「サプライチェーンを理解したAIの同僚」</span>がいたら？'}
 };
 let lang='zh',L=LANG[lang];
 let NARR=L.narr;
-const N={on:true,active:false,voice:null,pending:null,guard:null,cur:null,sup:('speechSynthesis' in window)};
+const N={on:true,active:false,voice:null,pending:null,guard:null,poll:null,cur:null,sup:('speechSynthesis' in window)};
 function allVoices(){return N.sup?speechSynthesis.getVoices():[];}
 function fillSel(sel){if(!sel)return;const all=allVoices();sel.innerHTML='';if(!all.length){const o=document.createElement('option');o.textContent='（此裝置無語音）';sel.appendChild(o);return;}
   const rx=new RegExp('^'+lang,'i');const inL=all.filter(v=>rx.test(v.lang)),rest=all.filter(v=>!rx.test(v.lang));
@@ -543,9 +543,10 @@ function applyLang(code){if(!LANG[code])return;lang=code;L=LANG[code];NARR=L.nar
 function buildLangSel(){['langSel','langSel0'].forEach(id=>{const sel=document.getElementById(id);if(!sel)return;sel.innerHTML='';Object.keys(LANG).forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent='🌐 '+LANG[k].name;sel.appendChild(o);});sel.value=lang;});}
 if(N.sup){pickV();speechSynthesis.onvoiceschanged=pickV;}
 buildLangSel();
-function duck(){if(M.master)M.master.gain.value=M.muted?0:(N.on&&N.active?M.vol*0.45:M.vol);}
-function stopN(){if(!N.sup)return;clearTimeout(N.pending);clearTimeout(N.guard);N.cur=null;speechSynthesis.cancel();N.active=false;duck();}
-function doSpeak(i){const txt=NARR[i];if(!txt)return;const u=new SpeechSynthesisUtterance(txt);if(N.voice)u.voice=N.voice;u.lang=N.voice?N.voice.lang:L.code;u.rate=(i<=3?0.97:1.0);u.pitch=1;u.volume=1;N.cur=u;u.onend=u.onerror=()=>{if(N.cur===u){N.active=false;duck();}};try{speechSynthesis.speak(u);}catch(e){}}
+function duck(){if(!M.master)return;const tgt=M.muted?0:(N.on&&N.active?M.vol*0.45:M.vol);try{M.master.gain.setTargetAtTime(tgt,M.ctx.currentTime,0.12);}catch(e){M.master.gain.value=tgt;}}
+function stopN(){if(!N.sup)return;clearTimeout(N.pending);clearTimeout(N.guard);clearInterval(N.poll);N.cur=null;speechSynthesis.cancel();N.active=false;duck();}
+function doSpeak(i){const txt=NARR[i];if(!txt)return;const u=new SpeechSynthesisUtterance(txt);if(N.voice)u.voice=N.voice;u.lang=N.voice?N.voice.lang:L.code;u.rate=(i<=3?0.97:1.0);u.pitch=1;u.volume=1;N.cur=u;u.onend=u.onerror=()=>{if(N.cur===u){N.active=false;duck();}};try{speechSynthesis.speak(u);}catch(e){}
+  clearInterval(N.poll);let seen=false;N.poll=setInterval(()=>{if(speechSynthesis.speaking)seen=true;if(seen&&!speechSynthesis.speaking&&!speechSynthesis.pending){clearInterval(N.poll);if(N.cur===u){N.active=false;duck();}}},250);}
 function speak(i){if(!N.sup)return;stopN();if(!N.on)return;const txt=NARR[i];if(!txt)return;N.active=true;duck();
   N.pending=setTimeout(()=>doSpeak(i),450);
   N.guard=setTimeout(()=>{N.active=false;duck();},22000);}
@@ -659,7 +660,8 @@ function render(dt){
 // ---------- 主迴圈 ----------
 let _lw=0,_lh=0;
 function checkResize(){if(innerWidth===_lw&&innerHeight===_lh)return;_lw=innerWidth;_lh=innerHeight;camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);if(useComposer)composer.setSize(innerWidth,innerHeight);}
-function loop(now){perfNow=now;if(!lastTs)lastTs=now;let dt=(now-lastTs)/1000;lastTs=now;if(dt>0.1)dt=0.1;dt*=speed;checkResize();
+function loop(now){if(document.hidden){lastTs=0;requestAnimationFrame(loop);return;} // 背景分頁不算圖，省電
+  perfNow=now;if(!lastTs)lastTs=now;let dt=(now-lastTs)/1000;lastTs=now;if(dt>0.1)dt=0.1;dt*=speed;checkResize();
   if(started&&playing){
     const ci=sceneAt(t);let nt=t+dt;
     // 聲畫同步：旁白還沒唸完就在該幕結尾等候
@@ -675,7 +677,9 @@ function unlockAudio(){try{if(M.ctx&&M.ctx.state==='suspended')M.ctx.resume();}c
 function begin(){started=true;playing=true;t=0;lastTs=0;sceneIdx=0;resetActors();document.getElementById('start').classList.add('hide');document.getElementById('bottomUI').classList.add('show');document.body.classList.add('cine');camMode='cine';initAudio();unlockAudio();gotoScene(0);musicScene(0);speakNow(0);try{const el=document.documentElement;if(el.requestFullscreen)el.requestFullscreen().catch(()=>{});}catch(e){}}
 function nextScene(){if(!started)return;for(let i=1;i<B.length;i++){if(B[i]>t+0.05){t=B[i];if(t>=TOTAL){t=TOTAL;playing=false;}return;}}t=TOTAL;playing=false;}
 function replay(){if(!started){begin();return;}t=0;playing=true;lastTs=0;sceneIdx=-1;resetActors();stopN();camMode='cine';gotoScene(0);}
-function toggle(){if(!started||t>=TOTAL)return;playing=!playing;if(!playing)stopN();}
+function toggle(){if(!started)return;if(t>=TOTAL){replay();return;}playing=!playing;
+  if(!playing){try{if(M.ctx)M.ctx.suspend();}catch(e){}try{if(N.sup)speechSynthesis.pause();}catch(e){}}
+  else{try{if(M.ctx)M.ctx.resume();}catch(e){}try{if(N.sup)speechSynthesis.resume();}catch(e){}}}
 document.getElementById('playBtn').addEventListener('click',e=>{e.stopPropagation();begin();});
 let _dn=null;
 canvas.addEventListener('pointerdown',e=>{_dn=[e.clientX,e.clientY];});
