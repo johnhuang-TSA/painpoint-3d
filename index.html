@@ -70,6 +70,32 @@
   #start .vrow select:hover{border-color:#9fc0e0;}
   #start .keys b{color:#9fc0e0;font-weight:600;}
   #errBox{position:fixed;inset:30% 18%;z-index:200;background:#2a0f0f;border:1px solid #e04848;border-radius:8px;padding:24px;display:none;font-size:14px;line-height:1.8;}
+
+  /* ===== 行動裝置 ===== */
+  #rotate{display:none;}
+  @media (max-width:860px){
+    #tlPhases{display:none;}
+    #tlCtrl{gap:6px;row-gap:8px;padding:0 2vw;}
+    #tlCtrl button{font-size:14px;padding:9px 12px;}
+    #tlCtrl select{font-size:13px;padding:8px;max-width:42vw;}
+    #bottomUI{padding:8px 6px 12px;}
+    body.cine #barTop,body.cine #barBot{height:7vh;}
+    #start h1{font-size:7vw;} #start .meta{font-size:3.5vw;} #start .kick{font-size:3vw;letter-spacing:.3em;}
+    #start .keys{display:none;}
+    #start .vrow{flex-wrap:wrap;justify-content:center;font-size:4vw;gap:.4em;}
+    #start .vrow select{font-size:4vw;padding:10px;max-width:84vw;}
+    #playBtn{font-size:5vw;padding:3.2vw 12vw;}
+    .big{font-size:min(6.6vw,8vh)!important;} .mid{font-size:min(4.6vw,5.4vh)!important;}
+    #clock3d{font-size:5vw;top:9vh;}
+  }
+  @media (max-width:860px) and (orientation:portrait){
+    #rotate{display:flex;position:fixed;inset:0;z-index:60;flex-direction:column;align-items:center;justify-content:center;gap:2.6vh;
+      background:radial-gradient(ellipse at 50% 42%,#0c1a2c,#04080e 82%);color:#cfe0f5;text-align:center;padding:10vw;}
+    #rotate .ic{font-size:17vw;animation:rotanim 2.6s ease-in-out infinite;}
+    #rotate h2{font-size:6vw;font-weight:700;letter-spacing:.04em;}
+    #rotate p{font-size:4vw;color:#8fa8c4;line-height:1.8;}
+  }
+  @keyframes rotanim{0%,35%{transform:rotate(0);}55%,100%{transform:rotate(90deg);}}
 </style>
 </head>
 <body>
@@ -123,6 +149,7 @@
   <div class="vrow">🗣 旁白聲音：<select id="voiceSel0" title="選擇旁白語音（可先試聽）"></select></div>
 </div>
 <div id="errBox"></div>
+<div id="rotate"><div class="ic">📱</div><h2>請將手機橫放觀看</h2><p>這是 16:9 電影規格的 3D 開場<br>橫放才能完整、清晰呈現</p></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
@@ -640,7 +667,10 @@ function loop(now){perfNow=now;if(!lastTs)lastTs=now;let dt=(now-lastTs)/1000;la
 
 // ---------- 控制 ----------
 function resetActors(){ACT.forEach(a=>{a.vis=0;setVis(a,0);});tMat.opacity=0;lineMat.opacity=0;dMat.opacity=0;DEPT.forEach(d=>d.actor.vis=0);}
-function begin(){started=true;playing=true;t=0;lastTs=0;sceneIdx=-1;resetActors();document.getElementById('start').classList.add('hide');document.getElementById('bottomUI').classList.add('show');document.body.classList.add('cine');camMode='cine';initAudio();gotoScene(0);try{const el=document.documentElement;if(el.requestFullscreen)el.requestFullscreen().catch(()=>{});}catch(e){}}
+// 手機（尤其 iOS）需在使用者手勢內解鎖音訊與語音
+function unlockAudio(){try{if(M.ctx&&M.ctx.state==='suspended')M.ctx.resume();}catch(e){}
+  if(N.sup){try{const wu=new SpeechSynthesisUtterance('');wu.volume=0;speechSynthesis.speak(wu);}catch(e){}}}
+function begin(){started=true;playing=true;t=0;lastTs=0;sceneIdx=-1;resetActors();document.getElementById('start').classList.add('hide');document.getElementById('bottomUI').classList.add('show');document.body.classList.add('cine');camMode='cine';initAudio();unlockAudio();gotoScene(0);try{const el=document.documentElement;if(el.requestFullscreen)el.requestFullscreen().catch(()=>{});}catch(e){}}
 function nextScene(){if(!started)return;for(let i=1;i<B.length;i++){if(B[i]>t+0.05){t=B[i];if(t>=TOTAL){t=TOTAL;playing=false;}return;}}t=TOTAL;playing=false;}
 function replay(){if(!started){begin();return;}t=0;playing=true;lastTs=0;sceneIdx=-1;resetActors();stopN();camMode='cine';gotoScene(0);}
 function toggle(){if(!started||t>=TOTAL)return;playing=!playing;if(!playing)stopN();}
