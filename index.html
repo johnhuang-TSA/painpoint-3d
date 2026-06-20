@@ -551,8 +551,15 @@ if(N.sup){pickV();speechSynthesis.onvoiceschanged=pickV;}
 buildLangSel();
 function duck(){if(!M.master)return;const tgt=M.muted?0:(N.on&&N.active?M.vol*0.45:M.vol);try{M.master.gain.setTargetAtTime(tgt,M.ctx.currentTime,0.12);}catch(e){M.master.gain.value=tgt;}}
 function stopN(){if(!N.sup)return;clearTimeout(N.pending);clearTimeout(N.guard);clearInterval(N.poll);N.cur=null;speechSynthesis.cancel();N.active=false;duck();}
-function doSpeak(i){const txt=NARR[i];if(!txt)return;const u=new SpeechSynthesisUtterance(txt);if(N.voice)u.voice=N.voice;u.lang=N.voice?N.voice.lang:L.code;u.rate=(i<=3?0.97:1.0);u.pitch=1;u.volume=1;N.cur=u;u.onend=u.onerror=()=>{if(N.cur===u){N.active=false;duck();}};try{speechSynthesis.speak(u);}catch(e){}
-  clearInterval(N.poll);let seen=false;N.poll=setInterval(()=>{if(speechSynthesis.speaking)seen=true;if(seen&&!speechSynthesis.speaking&&!speechSynthesis.pending){clearInterval(N.poll);if(N.cur===u){N.active=false;duck();}}},250);}
+function doSpeak(i){const txt=NARR[i];if(!txt)return;
+  // 長旁白切成一句一句接力唸：每句短、不被 Chrome ~15s 截斷，句末 onend 穩定觸發
+  const parts=(txt.match(/[^。！？!?]+[。！？!?]?/g)||[txt]).map(s=>s.trim()).filter(Boolean);
+  const token={};N.cur=token;let idx=0;
+  const next=()=>{if(N.cur!==token)return;if(idx>=parts.length){N.active=false;duck();return;}
+    const u=new SpeechSynthesisUtterance(parts[idx++]);if(N.voice)u.voice=N.voice;u.lang=N.voice?N.voice.lang:L.code;u.rate=(i<=3?0.97:1.0);u.pitch=1;u.volume=1;
+    u.onend=u.onerror=()=>{if(N.cur===token)next();};
+    try{speechSynthesis.speak(u);}catch(e){next();}};
+  next();}
 function speak(i){if(!N.sup)return;stopN();if(!N.on)return;const txt=NARR[i];if(!txt)return;N.active=true;duck();
   N.pending=setTimeout(()=>doSpeak(i),450);
   N.guard=setTimeout(()=>{N.active=false;duck();},22000);}
