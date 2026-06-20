@@ -142,7 +142,7 @@
 <div id="start">
   <div class="kick">SUPPLY CHAIN ‧ 開場 ‧ 3D 全息版</div>
   <h1>最簡單的問題，最難的答案</h1>
-  <div class="meta">約 60 秒 ‧ 建議全螢幕播放 ‧ 含音樂與旁白</div>
+  <div class="meta">含旁白約 1～1.5 分鐘 ‧ 關閉旁白約 60 秒 ‧ 建議全螢幕</div>
   <button id="playBtn">▶ 開始</button>
   <div class="keys"><b>空白</b> 暫停／繼續　<b>→/點擊</b> 下一段　<b>R</b> 重播　<b>M</b> 音樂　<b>N</b> 旁白　<b>拖曳</b> 自由視角</div>
   <div class="vrow">🌐 旁白語言：<select id="langSel0" title="旁白語言"></select>　🎵 音樂：<select id="styleSel0" title="音樂風格"></select></div>
@@ -151,18 +151,19 @@
 <div id="errBox"></div>
 <div id="rotate"><div class="ic">📱</div><h2>請將手機橫放觀看</h2><p>這是 16:9 電影規格的 3D 開場<br>橫放才能完整、清晰呈現</p></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+<!-- 本地化依賴：斷網/被防火牆擋也能播（檔案在 ./lib/） -->
+<script src="./lib/three.min.js"></script>
+<script src="./lib/OrbitControls.js"></script>
+<script src="./lib/CopyShader.js"></script>
+<script src="./lib/LuminosityHighPassShader.js"></script>
+<script src="./lib/EffectComposer.js"></script>
+<script src="./lib/RenderPass.js"></script>
+<script src="./lib/ShaderPass.js"></script>
+<script src="./lib/UnrealBloomPass.js"></script>
 <script>
 'use strict';
-function fatal(m){var b=document.getElementById('errBox');b.style.display='block';b.innerHTML='<b>載入失敗</b><br>'+m;}
-if(typeof THREE==='undefined'){fatal('Three.js 載入失敗，請確認網路後重新整理。');}
+function fatal(m){var b=document.getElementById('errBox');if(!b)return;b.style.display='block';b.innerHTML='<b>無法載入 3D 版</b><br>'+m+'<br><br>可改用 <a href="https://johnhuang-tsa.github.io/painpoint-2d/" style="color:#9fd4ff">2D 版（無外部依賴、可離線）</a>。';}
+if(typeof THREE==='undefined'||!THREE.OrbitControls||!THREE.EffectComposer||!THREE.UnrealBloomPass){fatal('3D 函式庫載入不完整（可能網路不穩或被防火牆擋）。請重新整理。');}
 else{
 try{
 const clamp=(x,a,b)=>x<a?a:x>b?b:x;
@@ -173,6 +174,8 @@ const rand=(a,b)=>a+Math.random()*(b-a);
 const DEG=Math.PI/180;
 
 const canvas=document.getElementById('c3d');
+let _gl=null;try{_gl=canvas.getContext('webgl')||canvas.getContext('experimental-webgl');}catch(e){}
+if(!_gl){fatal('此環境無法使用 WebGL（可能關閉了硬體加速，或透過遠端桌面播放）。');throw new Error('no-webgl');}
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
 renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,innerWidth<860?1.3:2)); // 手機降 pixelRatio 省效能
 const scene=new THREE.Scene();
@@ -493,7 +496,7 @@ const LANG={
    '同僚がまた質問を投げてくる。彼にとっては軽いひと言——本来なら、数秒で答えられるはず。',
    '問題はサプライチェーンに回ってくる。その答えは、四つのピースを揃えないと出ない。倉庫管理、在庫はあといくつ？生産管理、原料は足りる？購買、次のロットはいつ入る？品質管理、検査報告はいつ出る？私が持っているのは、そのうちのひとつだけ。残りは、同僚に一人ずつ聞いて回る。',
    'もちろん自分で調べてもいい。でも資料をめくるだけでも、在庫表、予測表、納期表、発注書、検収記録、品質検査記録——六枚の表を広げて、一枚ずつ照合して、午後がまるごと消える。',
-   '厄介なのは、ERPと新得利で数字が合わないこと。どちらを信じればいい？',
+   '厄介なのは、ERPと別の在庫システムで数字が合わないこと。どちらを信じればいい？',
    '日が暮れ、丸一日働いた。それでも引っかかるのは——この答え、本当に正しい？',
    'そしてゴーヤは、今週見るべき数百の品目のひとつにすぎない。',
    'もし、サプライチェーンを本当に理解したAIの同僚がいて、こうした質問に即座に答えてくれたら？同僚はひと言聞くだけ、あとは全部任せられる。',
@@ -524,7 +527,7 @@ function pickV(){if(!N.sup)return;const all=allVoices();const rx=new RegExp('^'+
   N.voice=pool.find(v=>/online|natural|neural|曉|雲/i.test(v.name))
     ||pool.find(v=>/google/i.test(v.name))
     ||pool.find(v=>!/hanhan/i.test(v.name))
-    ||pool[0]||vs[0]||all[0]||null;
+    ||pool[0]||vs[0]||null; // 無對應語言語音時寧可 null（交給引擎依 u.lang 自選）
   buildVoiceSel();}
 // 重建 3D 精靈標牌貼圖（切語言用）
 function updateSpriteText(sp,lines,opt){opt=opt||{};const fs=opt.fs||40,pad=opt.pad||16;
@@ -556,7 +559,7 @@ function doSpeak(i){const txt=NARR[i];if(!txt)return;
   const parts=[];(txt.match(/[^。．.！!？?]+[。．.！!？?]?/g)||[txt]).forEach(function(seg){seg=seg.trim();if(!seg)return;if(seg.length<=42){parts.push(seg);}else{(seg.match(/[^、，,；;：—]+[、，,；;：—]*/g)||[seg]).forEach(function(s){s=s.trim();if(s)parts.push(s);});}});
   const token={};N.cur=token;let idx=0;
   const next=()=>{if(N.cur!==token)return;clearTimeout(N.guard);if(idx>=parts.length){N.active=false;duck();return;}
-    const u=new SpeechSynthesisUtterance(parts[idx++]);if(N.voice)u.voice=N.voice;u.lang=N.voice?N.voice.lang:L.code;u.rate=(i<=3?0.97:1.0);u.pitch=1;u.volume=1;
+    const u=new SpeechSynthesisUtterance(parts[idx++]);if(N.voice)u.voice=N.voice;u.lang=L.code;u.rate=(i<=3?0.97:1.0);u.pitch=1;u.volume=1; // u.lang 一律用內容語言
     u.onend=u.onerror=()=>{if(N.cur===token)next();};
     N.guard=setTimeout(()=>{if(N.cur===token){N.active=false;duck();}},14000); // 後備：每句重設，只有單句真的卡住才放行（總長不限）
     try{speechSynthesis.speak(u);}catch(e){next();}};
@@ -685,6 +688,7 @@ function loop(now){if(document.hidden){lastTs=0;requestAnimationFrame(loop);retu
     const ci=sceneAt(t);let nt=t+dt;
     // 聲畫同步：旁白還沒唸完就在該幕結尾等候
     if(N.on&&N.active&&ci<DUR.length-1&&nt>=B[ci+1])nt=Math.min(nt,B[ci+1]-0.01);
+    if(N.on&&N.active&&nt>=TOTAL)nt=Math.min(nt,TOTAL-0.01); // 末幕也等收尾旁白唸完
     t=nt;if(t>=TOTAL){t=TOTAL;playing=false;}
   }
   render(dt);if(started)musicTick();requestAnimationFrame(loop);}
@@ -693,17 +697,18 @@ function loop(now){if(document.hidden){lastTs=0;requestAnimationFrame(loop);retu
 function resetActors(){ACT.forEach(a=>{a.vis=0;setVis(a,0);});tMat.opacity=0;lineMat.opacity=0;dMat.opacity=0;DEPT.forEach(d=>d.actor.vis=0);}
 // 手機（尤其 iOS）需在使用者手勢內解鎖音訊
 function unlockAudio(){try{if(M.ctx&&M.ctx.state==='suspended')M.ctx.resume();}catch(e){}}
-function begin(){started=true;playing=true;t=0;lastTs=0;sceneIdx=0;resetActors();document.getElementById('start').classList.add('hide');document.getElementById('bottomUI').classList.add('show');document.body.classList.add('cine');camMode='cine';initAudio();unlockAudio();gotoScene(0);musicScene(0);speakNow(0);try{const el=document.documentElement;if(el.requestFullscreen)el.requestFullscreen().catch(()=>{});}catch(e){}}
+function begin(){started=true;playing=true;t=0;lastTs=0;sceneIdx=0;resetActors();document.getElementById('start').classList.add('hide');document.getElementById('bottomUI').classList.add('show');document.body.classList.add('cine');camMode='cine';initAudio();unlockAudio();gotoScene(0);musicScene(0);speakNow(0);try{const el=document.documentElement;const rf=el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen;if(rf){const p=rf.call(el);if(p&&p.catch)p.catch(()=>{});}}catch(e){}}
 function nextScene(){if(!started)return;for(let i=1;i<B.length;i++){if(B[i]>t+0.05){t=B[i];if(t>=TOTAL){t=TOTAL;playing=false;}return;}}t=TOTAL;playing=false;}
 function replay(){if(!started){begin();return;}t=0;playing=true;lastTs=0;sceneIdx=-1;resetActors();stopN();camMode='cine';gotoScene(0);}
 function toggle(){if(!started)return;if(t>=TOTAL){replay();return;}playing=!playing;
-  if(!playing){try{if(M.ctx)M.ctx.suspend();}catch(e){}try{if(N.sup)speechSynthesis.pause();}catch(e){}}
-  else{try{if(M.ctx)M.ctx.resume();}catch(e){}try{if(N.sup)speechSynthesis.resume();}catch(e){}}}
+  if(!playing){stopN();try{if(M.ctx)M.ctx.suspend();}catch(e){}}              // 暫停：停旁白(清計時器)＋停音樂
+  else{try{if(M.ctx)M.ctx.resume();}catch(e){}if(N.on)speak(sceneAt(t));}}     // 續播：音樂回來＋本幕旁白重唸
 document.getElementById('playBtn').addEventListener('click',e=>{e.stopPropagation();begin();});
 let _dn=null;
 canvas.addEventListener('pointerdown',e=>{_dn=[e.clientX,e.clientY];});
 canvas.addEventListener('pointerup',e=>{if(!_dn||!started){_dn=null;return;}const m=Math.hypot(e.clientX-_dn[0],e.clientY-_dn[1]);_dn=null;if(m<6)nextScene();});
 addEventListener('keydown',e=>{
+  const tn=e.target&&e.target.tagName;if(tn==='SELECT'||tn==='INPUT'||tn==='TEXTAREA')return; // 焦點在下拉/輸入時不攔鍵
   if(e.code==='Space'){e.preventDefault();started?toggle():begin();}
   else if(e.code==='ArrowRight'){e.preventDefault();nextScene();}
   else if(e.key==='r'||e.key==='R'){e.preventDefault();replay();}
@@ -719,16 +724,19 @@ const bp2=document.getElementById('btnPlay2');
 const btnCam=document.getElementById('btnCam');
 let speed=1;const SPEEDS=[1,1.5,2,0.5];let si=0;
 PHN.forEach((nm,i)=>{const d=document.createElement('div');d.className='ph';d.innerHTML='<div class="dot"></div><div class="pn">'+(i+1)+'. '+nm+'</div><div class="pb"><i></i></div>';d.addEventListener('click',e=>{e.stopPropagation();jumpTo(i);});tlPhasesEl.appendChild(d);});
-function jumpTo(i){if(!started){begin();return;}i=clamp(i,0,DUR.length-1);t=B[i];sceneIdx=-1;playing=true;lastTs=0;resetActors();stopN();camMode='cine';gotoScene(i);render(0);}
+function jumpTo(i){const wp=started?playing:true;if(!started){begin();return;}i=clamp(i,0,DUR.length-1);t=B[i];sceneIdx=-1;playing=wp;lastTs=0;resetActors();stopN();if(camMode==='cine')gotoScene(i);render(0);} // 保留暫停狀態與自由視角
 function setCine(on){camMode=on?'cine':'free';if(on)gotoScene(sceneAt(t));btnCam.textContent=on?'🎥 電影運鏡':'🕹 自由視角';btnCam.classList.toggle('on',on);}
 document.getElementById('btnPrev').addEventListener('click',e=>{e.stopPropagation();jumpTo(sceneAt(t)-1);});
 document.getElementById('btnNext2').addEventListener('click',e=>{e.stopPropagation();jumpTo(sceneAt(t)+1);});
 bp2.addEventListener('click',e=>{e.stopPropagation();started?toggle():begin();});
 document.getElementById('btnReplay2').addEventListener('click',e=>{e.stopPropagation();replay();});
-document.getElementById('btnSpeed').addEventListener('click',e=>{e.stopPropagation();si=(si+1)%SPEEDS.length;speed=SPEEDS[si];document.getElementById('btnSpeed').textContent='速度 ×'+speed;});
+document.getElementById('btnSpeed').addEventListener('click',e=>{e.stopPropagation();if(N.on)return;si=(si+1)%SPEEDS.length;speed=SPEEDS[si];document.getElementById('btnSpeed').textContent='速度 ×'+speed;}); // 開旁白時停用
+function syncSpeedBtn(){const bs=document.getElementById('btnSpeed');if(!bs)return;bs.disabled=N.on;bs.style.opacity=N.on?'0.45':'';bs.title=N.on?'關閉旁白後才能調速（避免聲畫脫鉤）':'';if(N.on){si=0;speed=1;bs.textContent='速度 ×1';}}
+syncSpeedBtn();
+['click','mousedown'].forEach(ev=>document.getElementById('bottomUI').addEventListener(ev,e=>e.stopPropagation())); // 控制列(含下拉)不冒泡
 btnCam.addEventListener('click',e=>{e.stopPropagation();setCine(camMode!=='cine');});
 document.getElementById('btnMute2').addEventListener('click',e=>{e.stopPropagation();if(!M.ctx)initAudio();M.muted=!M.muted;duck();document.getElementById('btnMute2').textContent=M.muted?'🔇 靜音':'🔊 音樂';document.getElementById('btnMute2').classList.toggle('on',!M.muted);});
-document.getElementById('btnNarr2').addEventListener('click',e=>{e.stopPropagation();N.on=!N.on;if(!N.on)stopN();else if(started)speak(sceneAt(t));document.getElementById('btnNarr2').textContent=N.on?'🗣 旁白':'🤐 旁白關';document.getElementById('btnNarr2').classList.toggle('on',N.on);});
+document.getElementById('btnNarr2').addEventListener('click',e=>{e.stopPropagation();N.on=!N.on;if(!N.on)stopN();else if(started)speak(sceneAt(t));document.getElementById('btnNarr2').textContent=N.on?'🗣 旁白':'🤐 旁白關';document.getElementById('btnNarr2').classList.toggle('on',N.on);syncSpeedBtn();});
 ['voiceSel','voiceSel0'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('change',e=>{e.stopPropagation();setVoiceIdx(+e.target.value);});}); // 封面與控制列兩個下拉同步、切換即試聽
 ['langSel','langSel0'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('change',e=>{e.stopPropagation();applyLang(e.target.value);});}); // 切語言：旁白＋字幕＋表名＋標牌一起換
 ['styleSel','styleSel0'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('change',e=>{e.stopPropagation();if(!M.ctx)initAudio();applyStyle(e.target.value);});}); // 切音樂風格（封面/播放中皆可）
@@ -739,7 +747,7 @@ window.__t=()=>t;window.__hidden=()=>document.hidden;window.__bloom=()=>useCompo
 
 checkResize();requestAnimationFrame(loop);
 
-}catch(err){fatal('初始化錯誤：'+err.message+'<br><pre style="font-size:11px;white-space:pre-wrap">'+(err.stack||'')+'</pre>');console.error(err);}
+}catch(err){if(!(err&&err.message==='no-webgl'))fatal('初始化發生問題，請重新整理；或改用 2D 版。');console.error(err);} // 錯誤細節只進 console，不丟畫面
 }
 </script>
 </body>
