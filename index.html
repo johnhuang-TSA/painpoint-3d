@@ -553,18 +553,18 @@ function duck(){if(!M.master)return;const tgt=M.muted?0:(N.on&&N.active?M.vol*0.
 function stopN(){if(!N.sup)return;clearTimeout(N.pending);clearTimeout(N.guard);clearInterval(N.poll);N.cur=null;speechSynthesis.cancel();N.active=false;duck();}
 function doSpeak(i){const txt=NARR[i];if(!txt)return;
   // 長旁白切成一句一句接力唸：每句短、不被 Chrome ~15s 截斷，句末 onend 穩定觸發
-  const parts=(txt.match(/[^。！？!?]+[。！？!?]?/g)||[txt]).map(s=>s.trim()).filter(Boolean);
+  const parts=[];(txt.match(/[^。．.！!？?]+[。．.！!？?]?/g)||[txt]).forEach(function(seg){seg=seg.trim();if(!seg)return;if(seg.length<=42){parts.push(seg);}else{(seg.match(/[^、，,；;：—]+[、，,；;：—]*/g)||[seg]).forEach(function(s){s=s.trim();if(s)parts.push(s);});}});
   const token={};N.cur=token;let idx=0;
-  const next=()=>{if(N.cur!==token)return;if(idx>=parts.length){N.active=false;duck();return;}
+  const next=()=>{if(N.cur!==token)return;clearTimeout(N.guard);if(idx>=parts.length){N.active=false;duck();return;}
     const u=new SpeechSynthesisUtterance(parts[idx++]);if(N.voice)u.voice=N.voice;u.lang=N.voice?N.voice.lang:L.code;u.rate=(i<=3?0.97:1.0);u.pitch=1;u.volume=1;
     u.onend=u.onerror=()=>{if(N.cur===token)next();};
+    N.guard=setTimeout(()=>{if(N.cur===token){N.active=false;duck();}},14000); // 後備：每句重設，只有單句真的卡住才放行（總長不限）
     try{speechSynthesis.speak(u);}catch(e){next();}};
   next();}
 function speak(i){if(!N.sup)return;stopN();if(!N.on)return;const txt=NARR[i];if(!txt)return;N.active=true;duck();
-  N.pending=setTimeout(()=>doSpeak(i),450);
-  N.guard=setTimeout(()=>{N.active=false;duck();},22000);}
+  N.pending=setTimeout(()=>doSpeak(i),450);}
 // 在使用者手勢內「立即」唸（解鎖 iOS/手機 TTS）
-function speakNow(i){if(!N.sup||!N.on)return;stopN();const txt=NARR[i];if(!txt)return;N.active=true;duck();doSpeak(i);N.guard=setTimeout(()=>{N.active=false;duck();},22000);}
+function speakNow(i){if(!N.sup||!N.on)return;stopN();const txt=NARR[i];if(!txt)return;N.active=true;duck();doSpeak(i);}
 
 // ============================================================
 //  幕進入
