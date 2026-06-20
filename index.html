@@ -245,7 +245,7 @@ function textPoints(text,fontPx,scl){
   for(let y=0;y<h;y+=3)for(let x=0;x<w;x+=3){if(d[(y*w+x)*4+3]>128)pts.push([(x-w/2)*scl,(h/2-y)*scl]);}
   return pts;
 }
-const QTEXT=textPoints('山苦瓜，下週會不會缺貨？',64,0.045);
+const QTEXT=textPoints('山苦瓜，下週會不會缺貨？',64,0.06); // 世界尺寸（聚字寬度約滿版）
 const TN=QTEXT.length;
 const tGeo=new THREE.BufferGeometry();
 const tPos=new Float32Array(TN*3),tTgt=new Float32Array(TN*3),tStart=new Float32Array(TN*3);
@@ -254,8 +254,14 @@ for(let i=0;i<TN;i++){tTgt[i*3]=QTEXT[i][0];tTgt[i*3+1]=5+QTEXT[i][1];tTgt[i*3+2
   tStart[i*3]=Math.sin(b)*Math.cos(a)*r;tStart[i*3+1]=5+Math.cos(b)*r*0.6;tStart[i*3+2]=Math.sin(b)*Math.sin(a)*r-1;
   tPos[i*3]=tStart[i*3];tPos[i*3+1]=tStart[i*3+1];tPos[i*3+2]=tStart[i*3+2];}
 tGeo.setAttribute('position',new THREE.BufferAttribute(tPos,3));
-const tMat=new THREE.PointsMaterial({size:0.32,map:TEXG,color:0x6fc0ff,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending});
-const tPts=new THREE.Points(tGeo,tMat);tPts.frustumCulled=false;scene.add(tPts);
+const tMat=new THREE.PointsMaterial({size:0.32,map:TEXG,color:0x9fd4ff,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending});
+const tPts=new THREE.Points(tGeo,tMat);tPts.frustumCulled=false;tPts.visible=false;scene.add(tPts); // 舊聚字（中文 canvas 取樣不可靠）停用
+// 場景1：能量光點雲（四散→收束成核心→擴散），數量足、置中可靠
+const QN=620;const qGeo=new THREE.BufferGeometry();const qPos=new Float32Array(QN*3),qSeed=new Float32Array(QN*3);
+for(let qi=0;qi<QN;qi++){const r=rand(9,26),a=rand(0,Math.PI*2),b=rand(0,Math.PI);qSeed[qi*3]=Math.sin(b)*Math.cos(a)*r;qSeed[qi*3+1]=5+Math.cos(b)*r*0.55;qSeed[qi*3+2]=Math.sin(b)*Math.sin(a)*r-1;qPos[qi*3]=qSeed[qi*3];qPos[qi*3+1]=qSeed[qi*3+1];qPos[qi*3+2]=qSeed[qi*3+2];}
+qGeo.setAttribute('position',new THREE.BufferAttribute(qPos,3));
+const qMat=new THREE.PointsMaterial({size:0.34,map:TEXG,color:0x9fd4ff,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending});
+const qPts=new THREE.Points(qGeo,qMat);qPts.frustumCulled=false;scene.add(qPts);
 
 // ---------- 四部門人形（場景2，圍弧） ----------
 const DEPT=[
@@ -579,11 +585,17 @@ function render(dt){
   hemi.intensity=lerp(hemi.intensity,(i===4?0.25:0.4)+warmth*0.2,dt*2);
   if(bloom)bloom.strength=lerp(bloom.strength,(i===4?0.3:0.48)+warmth*0.18,dt*2);
 
-  // ---- 場景1：環境光點緩緩飄移（氛圍，不拼字）----
-  {for(let k=0;k<TN;k++){tPos[k*3]=tStart[k*3]+Math.sin(T*0.3+k)*0.4;tPos[k*3+1]=tStart[k*3+1]+Math.cos(T*0.25+k*1.3)*0.3;tPos[k*3+2]=tStart[k*3+2];}
-   tGeo.attributes.position.needsUpdate=true;
-   let op=(i===0)?smooth(ls/2)* (1-smooth((ls-5.5)/1.2)) :0;
-   tMat.opacity=op*0.5;tPts.visible=op>0.01;}
+  // ---- 場景1：光點四散→收束成能量核心→擴散（問句由字幕呈現）----
+  {const form=easeOut(clamp((ls-0.4)/2.4,0,1));   // 收束
+   const scat=smooth((ls-5.0)/1.6);               // 擴散
+   const k1=lerp(1,0.16,form)*(1+scat*6);
+   for(let q=0;q<QN;q++){const sx=qSeed[q*3],sy=qSeed[q*3+1],sz=qSeed[q*3+2];
+     qPos[q*3]=sx*k1+Math.sin(T*0.8+q)*0.28;
+     qPos[q*3+1]=5+(sy-5)*k1+Math.cos(T*0.7+q*1.3)*0.24;
+     qPos[q*3+2]=-1+(sz+1)*k1;}
+   qGeo.attributes.position.needsUpdate=true;
+   let op=(i===0)?smooth(ls/1.2)*(1-smooth((ls-5.8)/1.0)):0;
+   qMat.opacity=op*0.85;qPts.visible=op>0.01;}
 
   // ---- 場景2：四部門 + 問題光點彈跳 + 纏線 ----
   {const on=(i===1)?1:0;
