@@ -559,7 +559,7 @@ function doSpeak(i){const txt=NARR[i];if(!txt)return;
   const parts=[];(txt.match(/[^。．.！!？?]+[。．.！!？?]?/g)||[txt]).forEach(function(seg){seg=seg.trim();if(!seg)return;if(seg.length<=42){parts.push(seg);}else{(seg.match(/[^、，,；;：—]+[、，,；;：—]*/g)||[seg]).forEach(function(s){s=s.trim();if(s)parts.push(s);});}});
   const token={};N.cur=token;let idx=0;
   const next=()=>{if(N.cur!==token)return;clearTimeout(N.guard);if(idx>=parts.length){N.active=false;duck();return;}
-    let spk=parts[idx++];if(/^zh/i.test(L.code))spk=spk.replace(/AI/g,'A I'); // 中文：讓引擎逐字母唸出 ㄟ-愛＝AI（不動畫面文字）
+    let spk=parts[idx++];if(/^zh/i.test(L.code))spk=spk.replace(/([一-龥])\s*AI/g,'$1，AI').replace(/AI/g,'A I'); // 中文：AI 前若緊接中文字補小停頓、再逐字母唸 ㄟ-愛（只動發音、不動畫面文字）
     const u=new SpeechSynthesisUtterance(spk);if(N.voice)u.voice=N.voice;u.lang=L.code;u.rate=(i<=3?0.97:1.0);u.pitch=1;u.volume=1; // u.lang 一律用內容語言
     u.onend=u.onerror=()=>{if(N.cur===token)next();};
     N.guard=setTimeout(()=>{if(N.cur===token){N.active=false;duck();}},14000); // 後備：每句重設，只有單句真的卡住才放行（總長不限）
