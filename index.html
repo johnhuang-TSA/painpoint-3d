@@ -23,7 +23,7 @@
     background:radial-gradient(ellipse 74% 155% at 50% 50%,rgba(5,8,14,.75) 0%,rgba(5,8,14,.45) 52%,rgba(5,8,14,0) 82%);
     text-shadow:0 0 .35em rgba(0,0,0,.98),0 .1em .3em #000,0 0 1.4em rgba(0,0,0,.92),0 0 2.2em rgba(0,0,0,.75);}
   #labels3d{position:fixed;left:5%;bottom:20%;z-index:11;display:flex;flex-direction:column;gap:1vh;pointer-events:none;}
-  #labels3d .l3{opacity:0;font-size:min(1.9vw,2.2vh);color:#9fc8e8;letter-spacing:.1em;text-shadow:0 2px 8px #000;will-change:opacity;}
+  #labels3d .l3{opacity:0;font-size:min(1.9vw,2.2vh);color:#9fc8e8;letter-spacing:.1em;text-shadow:0 2px 8px #000;will-change:opacity;transition:opacity .4s ease;}
   #labels3d .l3::before{content:"▸ ";color:#5f86b0;}
   .sub.center{top:50%;transform:translateY(-50%);}
   .sub.lower{bottom:15%;}
@@ -351,7 +351,8 @@ const aSwarm=reg(swarmGrp,1);
 
 // 場景3：表名標籤（HTML 疊層，跟旁白唸的節奏同步顯示）
 const LBL3=['庫存表','預估表','交期表','採購單','驗收紀錄','品檢記錄'];
-const L3AT=[0.8,1.7,2.6,3.5,4.4,5.3];
+const L3AT=[0.8,1.7,2.6,3.5,4.4,5.3]; // 旁白關閉時的後備時間
+const lblShown=[0,0,0,0,0,0]; // 開旁白時：唸到該表名才設 1（左側標籤與旁白同步）
 const l3=[];{const el=document.getElementById('labels3d');LBL3.forEach(tx=>{const d=document.createElement('div');d.className='l3';d.textContent=tx;el.appendChild(d);l3.push(d);});}
 
 // 地面網格
@@ -559,7 +560,8 @@ function doSpeak(i){const txt=NARR[i];if(!txt)return;
   const parts=[];(txt.match(/[^。．.！!？?]+[。．.！!？?]?/g)||[txt]).forEach(function(seg){seg=seg.trim();if(!seg)return;if(seg.length<=42){parts.push(seg);}else{(seg.match(/[^、，,；;：—]+[、，,；;：—]*/g)||[seg]).forEach(function(s){s=s.trim();if(s)parts.push(s);});}});
   const token={};N.cur=token;let idx=0;
   const next=()=>{if(N.cur!==token)return;clearTimeout(N.guard);if(idx>=parts.length){N.active=false;duck();return;}
-    let spk=parts[idx++];if(/^zh/i.test(L.code))spk=spk.replace(/AI/g,'A I'); // 中文：逐字母唸 ㄟ-愛＝AI（只動發音、不動畫面文字）
+    const chunk=parts[idx++];let spk=chunk;if(/^zh/i.test(L.code))spk=spk.replace(/AI/g,'A I'); // 中文：逐字母唸 ㄟ-愛＝AI（只動發音、不動畫面文字）
+    if(i===2)for(let k=0;k<LBL3.length;k++)if(chunk.indexOf(LBL3[k])>=0)lblShown[k]=1; // 場景3：唸到哪張表就點亮左側對應標籤
     const u=new SpeechSynthesisUtterance(spk);if(N.voice)u.voice=N.voice;u.lang=L.code;u.rate=(i<=3?0.97:1.0);u.pitch=1;u.volume=1; // u.lang 一律用內容語言
     u.onend=u.onerror=()=>{if(N.cur===token)next();};
     N.guard=setTimeout(()=>{if(N.cur===token){N.active=false;duck();}},14000); // 後備：每句重設，只有單句真的卡住才放行（總長不限）
@@ -573,7 +575,7 @@ function speakNow(i){if(!N.sup||!N.on)return;stopN();const txt=NARR[i];if(!txt)r
 // ============================================================
 //  幕進入
 // ============================================================
-function onEnter(i){musicScene(i);speak(i);}
+function onEnter(i){if(i===2)lblShown.fill(0);musicScene(i);speak(i);}
 
 // ============================================================
 //  渲染
@@ -633,7 +635,7 @@ function render(dt){
        p.group.lookAt(0,yy,0);}});}
 
   // ---- 場景3 表名標籤（跟旁白同步） ----
-  {const inS3=(i===2);for(let k=0;k<l3.length;k++)l3[k].style.opacity=inS3?smooth((ls-L3AT[k])/0.7).toFixed(2):'0';}
+  {const inS3=(i===2);for(let k=0;k<l3.length;k++)l3[k].style.opacity=inS3?(N.on?lblShown[k]:smooth((ls-L3AT[k])/0.7)).toFixed(2):'0';}
 
   // ---- 場景A（index3）：數字打架（ERP≠Excel） ----
   {aConflict.vis=lerp(aConflict.vis,(i===3?1:0),dt*2.6);setVis(aConflict,aConflict.vis);
