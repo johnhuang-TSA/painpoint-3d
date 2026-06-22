@@ -353,7 +353,9 @@ const aSwarm=reg(swarmGrp,1);
 const LBL3=['庫存表','預估表','交期表','採購單','驗收紀錄','品檢記錄'];
 const L3AT=[0.8,1.7,2.6,3.5,4.4,5.3]; // 旁白關閉時的後備時間
 const lblShown=[0,0,0,0,0,0]; // 開旁白時：唸到該表名才設 1（左側標籤與旁白同步）
-const l3=[];{const el=document.getElementById('labels3d');LBL3.forEach(tx=>{const d=document.createElement('div');d.className='l3';d.textContent=tx;el.appendChild(d);l3.push(d);});}
+const l3=[];document.getElementById('labels3d').style.display='none'; // 表名改秀在面板上，移除左下角條列
+let qTarget=-1; // 場景2：問題光點當前停留的部門索引（-1＝尚未點名，停中央）
+PANELS.forEach(function(p,k){const lbl=makeSprite([LBL3[k]],{fs:54,color:'#d8ecff',bg:'rgba(8,18,32,0.86)',h:1.35});lbl.position.set(0,0,0.12);p.group.add(lbl);p.lbl=lbl;lbl.material.opacity=0;}); // 每片面板貼上對應表名（深底淺字、隨旁白浮現）
 
 // 地面網格
 const grid=new THREE.GridHelper(120,60,0x2f6a8a,0x143040);grid.material.transparent=true;grid.material.opacity=0;grid.material.depthWrite=false;grid.position.y=0.02;scene.add(grid);
@@ -561,7 +563,8 @@ function doSpeak(i){const txt=NARR[i];if(!txt)return;
   const token={};N.cur=token;let idx=0;
   const next=()=>{if(N.cur!==token)return;clearTimeout(N.guard);if(idx>=parts.length){N.active=false;duck();return;}
     const chunk=parts[idx++];let spk=chunk;if(/^zh/i.test(L.code))spk=spk.replace(/AI/g,'A I'); // 中文：逐字母唸 ㄟ-愛＝AI（只動發音、不動畫面文字）
-    if(i===2)for(let k=0;k<LBL3.length;k++)if(chunk.indexOf(LBL3[k])>=0)lblShown[k]=1; // 場景3：唸到哪張表就點亮左側對應標籤
+    if(i===2)for(let k=0;k<LBL3.length;k++)if(chunk.indexOf(LBL3[k])>=0)lblShown[k]=1; // 場景3：唸到哪張表就浮現對應面板表名
+    if(i===1)for(let k=0;k<DEPT.length;k++)if(chunk.indexOf(DEPT[k].n)>=0)qTarget=k; // 場景2：唸到哪個部門，光點就停到誰身上
     const u=new SpeechSynthesisUtterance(spk);if(N.voice)u.voice=N.voice;u.lang=L.code;u.rate=(i<=3?0.97:1.0);u.pitch=1;u.volume=1; // u.lang 一律用內容語言
     u.onend=u.onerror=()=>{if(N.cur===token)next();};
     N.guard=setTimeout(()=>{if(N.cur===token){N.active=false;duck();}},14000); // 後備：每句重設，只有單句真的卡住才放行（總長不限）
@@ -575,7 +578,7 @@ function speakNow(i){if(!N.sup||!N.on)return;stopN();const txt=NARR[i];if(!txt)r
 // ============================================================
 //  幕進入
 // ============================================================
-function onEnter(i){if(i===2)lblShown.fill(0);musicScene(i);speak(i);}
+function onEnter(i){if(i===2)lblShown.fill(0);if(i===1)qTarget=-1;musicScene(i);speak(i);}
 
 // ============================================================
 //  渲染
@@ -614,11 +617,11 @@ function render(dt){
   {const on=(i===1)?1:0;
    DEPT.forEach((d,k)=>{let tg=0;if(i===1)tg=(ls>d.pop)?1:0;else tg=on;d.actor.vis=lerp(d.actor.vis,tg,dt*3);setVis(d.actor,easeOut(d.actor.vis));
      if(d.actor.group.visible)d.actor.group.position.y=0.4*Math.sin(T*1.5+k);});
-   // 問題光點：在四部門之間彈跳（回不到原點）
+   // 問題光點：跟著旁白停在被點名的部門（旁白關閉時每約 2.5 秒依序拜訪）
    aQball.vis=lerp(aQball.vis,(i===1?1:0),dt*3);setVis(aQball,aQball.vis);
-   if(aQball.group.visible){const seg=Math.floor((ls*0.8))%4;const nseg=(seg+1)%4;const fr=(ls*0.8)%1;
-     const A=DEPT[seg].actor.group.position,Bp=DEPT[nseg].actor.group.position;
-     qball.position.set(lerp(A.x,Bp.x,fr),4+Math.sin(fr*Math.PI)*3,lerp(A.z,Bp.z,fr));}
+   if(aQball.group.visible){const ti=N.on?qTarget:Math.min(3,Math.floor(ls/2.5));
+     if(ti>=0&&ti<=3){const P=DEPT[ti].actor.group.position;qball.position.x=lerp(qball.position.x,P.x,dt*4);qball.position.y=lerp(qball.position.y,4.6,dt*4);qball.position.z=lerp(qball.position.z,P.z,dt*4);}
+     else{qball.position.x=lerp(qball.position.x,0,dt*3);qball.position.y=lerp(qball.position.y,5,dt*3);qball.position.z=lerp(qball.position.z,2,dt*3);}}
    // 纏線
    lineMat.opacity=lerp(lineMat.opacity,(i===1?0.5:0),dt*2);
    if(lineMat.opacity>0.01){let p=0;DEPT.forEach((d,k)=>{const P=d.actor.group.position;for(let s=0;s<16;s++){const f0=s/16,f1=(s+1)/16;
@@ -629,6 +632,7 @@ function render(dt){
 
   // ---- 場景3：六張玻璃面板環繞牢籠 ----
   {PANELS.forEach((p,k)=>{const tg=(i===2)?1:0;p.vis=lerp(p.vis,tg,dt*2.2);setVis(p,p.vis);
+     if(p.lbl)p.lbl.material.opacity=(i===2?(N.on?lblShown[k]:smooth((ls-L3AT[k])/0.7)):0)*p.vis; // 面板上的表名隨旁白浮現
      if(p.group.visible){const ang=T*0.25+k/PN*Math.PI*2;const rad=10-easeOut(clamp(ls/8,0,1))*3.5; // 越收越近
        const yy=3+Math.sin(T*0.6+k)*1.5+ (k%3)*1.2;
        p.group.position.set(Math.cos(ang)*rad,yy,Math.sin(ang)*rad);
