@@ -361,7 +361,7 @@ const grid=new THREE.GridHelper(120,60,0x2f6a8a,0x143040);grid.material.transpar
 // ============================================================
 //  時間軸
 // ============================================================
-const DUR=[7,11,10,7,5,7,9,4]; // 8 幕＝60 秒
+const DUR=[5,11,10,7,5,7,9,4]; // 場景1縮短為5s（旁白變短）；warmth 用 B[6] 自動對齊
 const B=[0];DUR.forEach(d=>B.push(B[B.length-1]+d));
 const TOTAL=B[B.length-1];
 let t=0,playing=false,started=false,lastTs=0;
