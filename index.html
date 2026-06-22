@@ -355,6 +355,7 @@ const L3AT=[0.8,1.7,2.6,3.5,4.4,5.3]; // 旁白關閉時的後備時間
 const lblShown=[0,0,0,0,0,0]; // 開旁白時：唸到該表名才設 1（左側標籤與旁白同步）
 const l3=[];document.getElementById('labels3d').style.display='none'; // 表名改秀在面板上，移除左下角條列
 let qTarget=-1; // 場景2：問題光點當前停留的部門索引（-1＝尚未點名，停中央）
+let s3capV=0; // 場景3字幕淡入量（每幀 lerp，避免依賴凍結的 t；六表全唸完才升起）
 PANELS.forEach(function(p,k){const lbl=makeSprite([LBL3[k]],{fs:54,color:'#d8ecff',bg:'rgba(8,18,32,0.86)',h:1.35});lbl.position.set(0,0,0.12);p.group.add(lbl);p.lbl=lbl;lbl.material.opacity=0;}); // 每片面板貼上對應表名（深底淺字、隨旁白浮現）
 
 // 地面網格
@@ -561,10 +562,10 @@ function doSpeak(i){const txt=NARR[i];if(!txt)return;
   // 長旁白切成一句一句接力唸：每句短、不被 Chrome ~15s 截斷，句末 onend 穩定觸發
   const parts=[];(txt.match(/[^。．.！!？?]+[。．.！!？?]?/g)||[txt]).forEach(function(seg){seg=seg.trim();if(!seg)return;if(seg.length<=42){parts.push(seg);}else{(seg.match(/[^、，,；;：—]+[、，,；;：—]*/g)||[seg]).forEach(function(s){s=s.trim();if(s)parts.push(s);});}});
   const token={};N.cur=token;let idx=0;
-  const next=()=>{if(N.cur!==token)return;clearTimeout(N.guard);if(idx>=parts.length){N.active=false;duck();return;}
+  const next=()=>{if(N.cur!==token)return;clearTimeout(N.guard);if(idx>=parts.length){if(i===2)lblShown.fill(1);N.active=false;duck();return;} // 場景3旁白唸完：保險補滿（含英文等未被逐詞命中的表）
     const chunk=parts[idx++];let spk=chunk;if(/^zh/i.test(L.code))spk=spk.replace(/AI/g,'A I'); // 中文：逐字母唸 ㄟ-愛＝AI（只動發音、不動畫面文字）
-    if(i===2)for(let k=0;k<LBL3.length;k++)if(chunk.indexOf(LBL3[k])>=0)lblShown[k]=1; // 場景3：唸到哪張表就浮現對應面板表名
-    if(i===1)for(let k=0;k<DEPT.length;k++)if(chunk.indexOf(DEPT[k].n)>=0)qTarget=k; // 場景2：唸到哪個部門，光點就停到誰身上
+    if(i===2)for(let k=0;k<LBL3.length;k++){if(chunk.indexOf(LBL3[k])>=0||(L.tables[k]&&chunk.toLowerCase().indexOf(L.tables[k].toLowerCase())>=0))lblShown[k]=1;} // 場景3：唸到哪張表就浮現對應面板（中文常數或當前語言詞，英文大小寫不敏感）
+    if(i===1)for(let k=0;k<DEPT.length;k++){if(chunk.indexOf(DEPT[k].n)>=0||(L.depts[k]&&chunk.toLowerCase().indexOf(L.depts[k].toLowerCase())>=0))qTarget=k;} // 場景2：唸到哪個部門光點就停到誰身上（多語言）
     const u=new SpeechSynthesisUtterance(spk);if(N.voice)u.voice=N.voice;u.lang=L.code;u.rate=(i<=3?0.97:1.0);u.pitch=1;u.volume=1; // u.lang 一律用內容語言
     u.onend=u.onerror=()=>{if(N.cur===token)next();};
     N.guard=setTimeout(()=>{if(N.cur===token){N.active=false;duck();}},14000); // 後備：每句重設，只有單句真的卡住才放行（總長不限）
@@ -578,7 +579,7 @@ function speakNow(i){if(!N.sup||!N.on)return;stopN();const txt=NARR[i];if(!txt)r
 // ============================================================
 //  幕進入
 // ============================================================
-function onEnter(i){if(i===2)lblShown.fill(0);if(i===1)qTarget=-1;musicScene(i);speak(i);}
+function onEnter(i){if(i===2){lblShown.fill(0);s3capV=0;}if(i===1)qTarget=-1;musicScene(i);speak(i);}
 
 // ============================================================
 //  渲染
@@ -618,7 +619,7 @@ function render(dt){
    DEPT.forEach((d,k)=>{let tg=0;if(i===1)tg=(ls>d.pop)?1:0;else tg=on;d.actor.vis=lerp(d.actor.vis,tg,dt*3);setVis(d.actor,easeOut(d.actor.vis));
      if(d.actor.group.visible)d.actor.group.position.y=0.4*Math.sin(T*1.5+k);});
    // 問題光點：跟著旁白停在被點名的部門（旁白關閉時每約 2.5 秒依序拜訪）
-   aQball.vis=lerp(aQball.vis,(i===1?1:0),dt*3);setVis(aQball,aQball.vis);
+   aQball.vis=lerp(aQball.vis,((i===1&&(!N.on||qTarget>=0))?1:0),dt*3);setVis(aQball,aQball.vis); // 開旁白時：唸到「倉管」（qTarget>=0）光球才出現
    if(aQball.group.visible){const ti=N.on?qTarget:Math.min(3,Math.floor(ls/2.5));
      if(ti>=0&&ti<=3){const P=DEPT[ti].actor.group.position;qball.position.x=lerp(qball.position.x,P.x,dt*4);qball.position.y=lerp(qball.position.y,4.6,dt*4);qball.position.z=lerp(qball.position.z,P.z,dt*4);}
      else{qball.position.x=lerp(qball.position.x,0,dt*3);qball.position.y=lerp(qball.position.y,5,dt*3);qball.position.z=lerp(qball.position.z,2,dt*3);}}
@@ -631,7 +632,7 @@ function render(dt){
      lineGeo.attributes.position.needsUpdate=true;}}
 
   // ---- 場景3：六張玻璃面板環繞牢籠 ----
-  {PANELS.forEach((p,k)=>{const tg=(i===2)?1:0;p.vis=lerp(p.vis,tg,dt*2.2);setVis(p,p.vis);
+  {PANELS.forEach((p,k)=>{const tg=(i===2)?(N.on?lblShown[k]:smooth((ls-L3AT[k])/0.7)):0;p.vis=lerp(p.vis,tg,dt*2.2);setVis(p,p.vis); // 開旁白時：唸到哪張表，那片面板才隨之浮現（一張一張）
      if(p.lbl)p.lbl.material.opacity=(i===2?(N.on?lblShown[k]:smooth((ls-L3AT[k])/0.7)):0)*p.vis; // 面板上的表名隨旁白浮現
      if(p.group.visible){const ang=T*0.25+k/PN*Math.PI*2;const rad=10-easeOut(clamp(ls/8,0,1))*3.5; // 越收越近
        const yy=3+Math.sin(T*0.6+k)*1.5+ (k%3)*1.2;
@@ -665,7 +666,7 @@ function render(dt){
   // ---- 字幕 ----
   for(const k in SUBS)document.getElementById(SUBS[k]).style.opacity='0';
   if(SUBS[i]){const el=document.getElementById(SUBS[i]);let op;
-    if(i===0)op=smooth((ls-0.6)/1.2);else if(i===1)op=smooth((ls-1.0)/1.2);else if(i===2)op=smooth((ls-1.5)/1.2);else if(i===3)op=smooth((ls-1.4)/1.0);else if(i===4)op=smooth((ls-0.6)/1.6);else if(i===5)op=smooth((ls-3.6)/1.0);else if(i===6)op=smooth((ls-0.3)/1.0);else op=smooth((ls-1.0)/1.6);
+    if(i===0)op=smooth((ls-0.6)/1.2);else if(i===1)op=smooth((ls-1.0)/1.2);else if(i===2){if(N.on){s3capV=lerp(s3capV,(lblShown.every(Boolean)?1:0),dt*3);op=s3capV;}else op=smooth((ls-1.5)/1.2);} /* 開旁白：六表全唸完字幕才淡入（每幀 lerp，等候期 t 凍結也能升起）*/ else if(i===3)op=smooth((ls-1.4)/1.0);else if(i===4)op=smooth((ls-0.6)/1.6);else if(i===5)op=smooth((ls-3.6)/1.0);else if(i===6)op=smooth((ls-0.3)/1.0);else op=smooth((ls-1.0)/1.6);
     el.style.opacity=op.toFixed(3);}
 
   // ---- 相機 ----
@@ -754,7 +755,6 @@ document.getElementById('btnNarr2').addEventListener('click',e=>{e.stopPropagati
 // 除錯
 window.__seek=x=>{started=true;playing=false;document.getElementById('start').classList.add('hide');document.body.classList.add('cine');camMode='cine';t=clamp(x,0,TOTAL);sceneIdx=-1;gotoScene(sceneAt(t));camTweenT=1;camera.position.set(SCN[sceneAt(t)].cam.p[0],SCN[sceneAt(t)].cam.p[1],SCN[sceneAt(t)].cam.p[2]);for(let k=0;k<50;k++)render(0.05);};
 window.__t=()=>t;window.__hidden=()=>document.hidden;window.__bloom=()=>useComposer;
-
 checkResize();requestAnimationFrame(loop);
 
 }catch(err){if(!(err&&err.message==='no-webgl'))fatal('初始化發生問題，請重新整理；或改用 2D 版。');console.error(err);} // 錯誤細節只進 console，不丟畫面
