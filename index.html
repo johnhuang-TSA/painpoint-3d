@@ -356,7 +356,7 @@ const lblShown=[0,0,0,0,0,0]; // 開旁白時：唸到該表名才設 1（左側
 const l3=[];document.getElementById('labels3d').style.display='none'; // 表名改秀在面板上，移除左下角條列
 let qTarget=-1; // 場景2：問題光點當前停留的部門索引（-1＝尚未點名，停中央）
 let s3capV=0; // 場景3字幕淡入量（每幀 lerp，避免依賴凍結的 t；六表全唸完才升起）
-PANELS.forEach(function(p,k){const lbl=makeSprite([LBL3[k]],{fs:54,color:'#d8ecff',bg:'rgba(8,18,32,0.86)',h:1.35});lbl.position.set(0,0,0.12);p.group.add(lbl);p.lbl=lbl;lbl.material.opacity=0;}); // 每片面板貼上對應表名（深底淺字、隨旁白浮現）
+PANELS.forEach(function(p,k){const lbl=makeSprite([LBL3[k]],{fs:48,color:'#d8ecff',bg:'rgba(8,18,32,0.86)',h:1.15});lbl.position.set(0,0,0.12);p.group.add(lbl);p.lbl=lbl;lbl.material.opacity=0;}); // 每片面板貼上對應表名（深底淺字、隨旁白浮現）
 
 // 地面網格
 const grid=new THREE.GridHelper(120,60,0x2f6a8a,0x143040);grid.material.transparent=true;grid.material.opacity=0;grid.material.depthWrite=false;grid.position.y=0.02;scene.add(grid);
@@ -639,10 +639,10 @@ function render(dt){
      p.vis=lerp(p.vis,tg,dt*2.6);setVis(p,p.vis);
      if(p.lbl)p.lbl.material.opacity=named*Math.min(1,p.vis*1.4); // 表名只在被點到時浮現
      if(p.group.visible){
-       const th=(k-(PN-1)/2)*0.40;                         // 由左到右的弧角
-       const px=Math.sin(th)*8.6;
-       const pz=-4.6-(Math.cos(th)-1)*5.0+close*1.0+named*0.6; // 弧形＋整場緩緩逼近＋點到時再往鏡頭壓近
-       const py=4.2+Math.sin(T*0.7+k)*0.45;                // 輕微呼吸浮動
+       const px=(k-(PN-1)/2)*2.7;                          // 等距水平排列（避免 sin 排位讓邊緣互相擠壓）
+       const depth=Math.pow((k-(PN-1)/2)/2.5,2);           // 0=中央 1=兩端
+       const pz=-5.2+depth*1.8+close*1.0+named*0.6;        // 輕微凹弧（兩端略近）＋整場逼近＋點到時再往鏡頭壓近
+       const py=4.2+Math.sin(T*0.7+k)*0.4;                 // 輕微呼吸浮動
        p.group.position.set(px,py,pz);
        p.group.lookAt(camera.position.x,py,camera.position.z);}}); } // 永遠面向鏡頭，表面字清楚
 
