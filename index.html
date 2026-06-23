@@ -134,7 +134,6 @@
     <select id="styleSel" title="音樂風格"></select>
     <button id="btnNarr2" class="on">🗣 旁白</button>
     <select id="langSel" title="旁白語言"></select>
-    <select id="voiceSel" title="旁白聲音（可切換不同語音）"></select>
     <button id="btnReplay2">↻ 重播</button>
   </div>
 </div>
@@ -146,7 +145,6 @@
   <button id="playBtn">▶ 開始</button>
   <div class="keys"><b>空白</b> 暫停／繼續　<b>→/點擊</b> 下一段　<b>R</b> 重播　<b>M</b> 音樂　<b>N</b> 旁白　<b>拖曳</b> 自由視角</div>
   <div class="vrow">🌐 旁白語言：<select id="langSel0" title="旁白語言"></select>　🎵 音樂：<select id="styleSel0" title="音樂風格"></select></div>
-  <div class="vrow">🗣 旁白聲音：<select id="voiceSel0" title="選擇旁白語音（可先試聽）"></select></div>
 </div>
 <div id="errBox"></div>
 <div id="rotate"><div class="ic">📱</div><h2>請將手機橫放觀看</h2><p>這是 16:9 電影規格的 3D 開場<br>橫放才能完整、清晰呈現</p></div>
@@ -400,7 +398,7 @@ controls.addEventListener('start',()=>{camMode='free';});
 // ============================================================
 //  音樂（Web Audio，同 2D 弧線）
 // ============================================================
-const M={ctx:null,master:null,mlp:null,bus:null,padOsc:[],padGain:null,padFilt:null,revWet:null,muted:false,vol:0.55,sched:0,beat:0};
+const M={ctx:null,master:null,mlp:null,lim:null,bus:null,padOsc:[],padGain:null,padFilt:null,revWet:null,muted:false,vol:0.42,sched:0,beat:0};
 // ===== 音樂風格（同一合成引擎的氛圍變體）=====
 const STYLES={
  cinematic:{name:'🎬 電影弦樂',padMul:1,cutMul:1,pianoMul:1,pulseMul:1,rev:0.55,arp:0,bell:0},
@@ -415,7 +413,8 @@ buildStyleSel();
 function _impulse(c,dur,decay){const len=Math.floor(c.sampleRate*dur);const b=c.createBuffer(2,len,c.sampleRate);for(let ch=0;ch<2;ch++){const d=b.getChannelData(ch);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,decay);}return b;}
 function initAudio(){if(M.ctx)return;const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;const c=M.ctx=new AC();
   M.master=c.createGain();M.master.gain.value=M.vol;
-  M.mlp=c.createBiquadFilter();M.mlp.type='lowpass';M.mlp.frequency.value=5200;M.master.connect(M.mlp);M.mlp.connect(c.destination);
+  M.mlp=c.createBiquadFilter();M.mlp.type='lowpass';M.mlp.frequency.value=5200;M.master.connect(M.mlp);
+  M.lim=c.createDynamicsCompressor();M.lim.threshold.value=-3;M.lim.knee.value=0;M.lim.ratio.value=20;M.lim.attack.value=0.003;M.lim.release.value=0.25;M.mlp.connect(M.lim);M.lim.connect(c.destination); // master 限幅器：避免多聲源疊加破音
   M.bus=c.createGain();M.bus.connect(M.master);
   try{const conv=c.createConvolver();conv.buffer=_impulse(c,2.6,2.4);const w=c.createGain();w.gain.value=ST().rev;M.revWet=w;M.bus.connect(conv);conv.connect(w);w.connect(M.master);}
   catch(e){const dly=c.createDelay(1);dly.delayTime.value=0.35;const fb=c.createGain();fb.gain.value=0.32;const w=c.createGain();w.gain.value=ST().rev*0.55;M.revWet=w;M.bus.connect(dly);dly.connect(fb);fb.connect(dly);dly.connect(w);w.connect(M.master);}
