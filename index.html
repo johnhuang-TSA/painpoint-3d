@@ -525,7 +525,7 @@ const VO2FRAC=_frac(NARR_ZH[1],DEPT.map(d=>d.n)); // 場景2：四部門
 const VO3FRAC=_frac(NARR_ZH[2],LBL3);             // 場景3：六張表
 function useVO(i){return N.on&&lang==='dori'&&VO[i]&&!VO[i].error;}
 function playClip(i){const a=VO[i];if(!a){if(N.sup)doSpeak(i);return;}N.curClip=a;N.active=true;duck();
-  try{a.currentTime=0;}catch(e){}
+  try{a.currentTime=0;a.playbackRate=speed;}catch(e){} // 跟隨目前速度（音檔變速、聲畫同步）
   clearTimeout(N.guard);N.guard=setTimeout(()=>{if(N.curClip===a){N.active=false;duck();}},40000); // 後備：音檔異常卡住時放行
   a.onended=()=>{if(N.curClip===a){clearTimeout(N.guard);N.active=false;duck();}};
   a.onerror=()=>{if(N.curClip===a){N.curClip=null;clearTimeout(N.guard);if(N.sup)doSpeak(i);else{N.active=false;duck();}}}; // 檔案缺/壞→退回 TTS
@@ -565,7 +565,7 @@ function applyLang(code){if(!LANG[code])return;lang=code;L=LANG[code];NARR=L.nar
   DEPT.forEach((d,k)=>{if(d.lbl&&L.depts[k])updateSpriteText(d.lbl,[L.depts[k]],{fs:64,color:'#0a1420',bg:cssCol[k]+'f2',h:2.7});});
   if(typeof allyLbl!=='undefined'&&allyLbl)updateSpriteText(allyLbl,[L.ai],{fs:46,color:'#ffe0b0',bg:'rgba(34,18,4,0.94)',h:2.5});
   const a=document.getElementById('langSel'),b=document.getElementById('langSel0');if(a)a.value=code;if(b)b.value=code;
-  pickV();if(started)speak(sceneAt(t));}
+  pickV();if(typeof syncSpeedBtn==='function')syncSpeedBtn();if(started)speak(sceneAt(t));} // 切語言時更新速度鈕可用狀態（Dori 可調速、TTS 停用）
 function buildLangSel(){['langSel','langSel0'].forEach(id=>{const sel=document.getElementById(id);if(!sel)return;sel.innerHTML='';Object.keys(LANG).forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent='🌐 '+LANG[k].name;sel.appendChild(o);});sel.value=lang;});}
 if(N.sup){pickV();speechSynthesis.onvoiceschanged=pickV;}
 buildLangSel();
@@ -777,8 +777,8 @@ document.getElementById('btnPrev').addEventListener('click',e=>{e.stopPropagatio
 document.getElementById('btnNext2').addEventListener('click',e=>{e.stopPropagation();jumpTo(sceneAt(t)+1);});
 bp2.addEventListener('click',e=>{e.stopPropagation();started?toggle():begin();});
 document.getElementById('btnReplay2').addEventListener('click',e=>{e.stopPropagation();replay();});
-document.getElementById('btnSpeed').addEventListener('click',e=>{e.stopPropagation();if(N.on)return;si=(si+1)%SPEEDS.length;speed=SPEEDS[si];document.getElementById('btnSpeed').textContent='速度 ×'+speed;}); // 開旁白時停用
-function syncSpeedBtn(){const bs=document.getElementById('btnSpeed');if(!bs)return;bs.disabled=N.on;bs.style.opacity=N.on?'0.45':'';bs.title=N.on?'關閉旁白後才能調速（避免聲畫脫鉤）':'';if(N.on){si=0;speed=1;bs.textContent='速度 ×1';}}
+document.getElementById('btnSpeed').addEventListener('click',e=>{e.stopPropagation();if(N.on&&lang!=='dori')return;si=(si+1)%SPEEDS.length;speed=SPEEDS[si];VO.forEach(a=>{try{a.playbackRate=speed;}catch(_){}});document.getElementById('btnSpeed').textContent='速度 ×'+speed;}); // Dori 真人音檔可變速(playbackRate,瀏覽器自動保留音高)；僅系統 TTS 旁白時停用
+function syncSpeedBtn(){const bs=document.getElementById('btnSpeed');if(!bs)return;const dis=N.on&&lang!=='dori';bs.disabled=dis;bs.style.opacity=dis?'0.45':'';bs.title=dis?'系統 TTS 語音無法變速；改用「Dori 真人配音」即可調速':'';if(dis){si=0;speed=1;bs.textContent='速度 ×1';}}
 syncSpeedBtn();
 ['click','mousedown'].forEach(ev=>document.getElementById('bottomUI').addEventListener(ev,e=>e.stopPropagation())); // 控制列(含下拉)不冒泡
 btnCam.addEventListener('click',e=>{e.stopPropagation();setCine(camMode!=='cine');});
