@@ -279,7 +279,7 @@ DEPT.forEach((d,i)=>{
   const lbl=makeSprite([d.n],{fs:64,color:'#0a1420',bg:cssCol[i]+'f2',h:2.7});lbl.position.set(0,9.9,0);g.add(lbl);
   d.lbl=lbl;d.actor=reg(g,1);d.pop=0.6+i*1.1;
 });
-const GRAYC=new THREE.Color(0x6f777e); // 未點名時的灰
+const GRAYC=new THREE.Color(0x9aa6b4); // 未點名時的灰（偏亮，讓輪廓清楚看得出有人）
 DEPT.forEach(d=>{d.figMats=d.actor.mats.filter(m=>!m.map);d.colObj=new THREE.Color(d.col);d.lit=0;}); // 人物本體材質(排除名牌貼圖)；lit:0=灰 1=發亮
 // 中央被傳遞的問題光點
 const qball=new THREE.Mesh(new THREE.SphereGeometry(0.42,16,16),holoMat(0x9fd8ff,0.7));
@@ -645,7 +645,7 @@ function render(dt){
   {DEPT.forEach((d,k)=>{
      d.actor.vis=lerp(d.actor.vis,(i===1?1:0),dt*3);const e=easeOut(d.actor.vis);setVis(d.actor,e); // 一進場四人全出現（不再依序彈入）
      if(i===1){const ti=N.on?qTarget:Math.min(3,Math.floor(ls/2.5));d.lit=lerp(d.lit,(k<=ti?1:0),dt*4);} // 依序：被點名(k<=ti)才發亮並保持
-     if(d.actor.group.visible){const litF=0.5+0.5*d.lit;d.figMats.forEach(m=>{m.color.copy(GRAYC).lerp(d.colObj,d.lit);m.opacity=m._b*e*litF;});} // 灰→自身顏色、暗→亮（人物不做位移，保持不動）
+     if(d.actor.group.visible){const litF=0.68+0.32*d.lit;d.figMats.forEach(m=>{m.color.copy(GRAYC).lerp(d.colObj,d.lit);m.opacity=m._b*e*litF;});} // 未點名也看得出輪廓(0.68)→點名變亮(1.0)成自身顏色；人物不位移
    });
    // 問題光點：跟著旁白停在被點名的部門（與發亮互相呼應；旁白關閉時每約 2.5 秒依序）
    aQball.vis=lerp(aQball.vis,((i===1&&(!N.on||qTarget>=0))?1:0),dt*3);setVis(aQball,aQball.vis);
