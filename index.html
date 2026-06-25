@@ -356,7 +356,9 @@ const lblShown=[0,0,0,0,0,0]; // 開旁白時：唸到該表名才設 1（左側
 const l3=[];document.getElementById('labels3d').style.display='none'; // 表名改秀在面板上，移除左下角條列
 let qTarget=-1; // 場景2：問題光點當前停留的部門索引（-1＝尚未點名，停中央）
 let s3capV=0; // 場景3字幕淡入量（每幀 lerp，避免依賴凍結的 t；六表全唸完才升起）
-PANELS.forEach(function(p,k){const lbl=makeSprite([LBL3[k]],{fs:48,color:'#d8ecff',bg:'rgba(8,18,32,0.86)',h:1.15});lbl.position.set(0,0,0.12);p.group.add(lbl);p.lbl=lbl;lbl.material.opacity=0;}); // 每片面板貼上對應表名（深底淺字、隨旁白浮現）
+PANELS.forEach(function(p,k){const lbl=makeSprite([LBL3[k]],{fs:48,color:'#d8ecff',bg:'rgba(8,18,32,0.86)',h:1.15});lbl.position.set(0,0,0.12);p.group.add(lbl);p.lbl=lbl;lbl.material.opacity=0;p.rev=0;}); // 每片面板貼上對應表名；p.rev=平滑揭示量(0深處→1就位發亮)
+// 場景3「縱深資料流」六張表的就位座標：左右交錯、逐張往深處退（強透視層疊）
+const S3POS=[{x:-6.6,y:3.0,z:-2.0},{x:6.6,y:3.3,z:-2.4},{x:-7.0,y:6.4,z:-3.0},{x:7.0,y:6.5,z:-3.4},{x:-0.2,y:2.3,z:-4.6},{x:0.4,y:7.0,z:-5.0}];
 
 // 地面網格
 const grid=new THREE.GridHelper(120,60,0x2f6a8a,0x143040);grid.material.transparent=true;grid.material.opacity=0;grid.material.depthWrite=false;grid.position.y=0.02;scene.add(grid);
@@ -599,7 +601,7 @@ function speakNow(i){if(!N.on)return;stopN();
 // ============================================================
 //  幕進入
 // ============================================================
-function onEnter(i){if(i===2){lblShown.fill(0);s3capV=0;}if(i===1){qTarget=-1;DEPT.forEach(d=>d.lit=0);}musicScene(i);speak(i);}
+function onEnter(i){if(i===2){lblShown.fill(0);s3capV=0;PANELS.forEach(p=>p.rev=0);}if(i===1){qTarget=-1;DEPT.forEach(d=>d.lit=0);}musicScene(i);speak(i);}
 
 // ============================================================
 //  渲染
@@ -652,20 +654,18 @@ function render(dt){
      else{qball.position.x=lerp(qball.position.x,0,dt*3);qball.position.y=lerp(qball.position.y,5,dt*3);qball.position.z=lerp(qball.position.z,2,dt*3);}}
    lineMat.opacity=0;} // 纏亂資料線（背景虛線）已移除
 
-  // ---- 場景3：六張玻璃面板在鏡頭前排成弧形「資料牆」，逐張點亮浮現 ----
-  {const close=easeOut(clamp(ls/8,0,1)); // 整場緩緩逼近（被表淹沒）
-   PANELS.forEach((p,k)=>{
-     const named=(i===2)?(N.on?lblShown[k]:smooth((ls-L3AT[k])/0.7)):0; // 該表是否已被旁白點到（0=尚未／1=已點）
-     const tg=(i===2)?(0.30+0.70*named):0;                 // 一開場就暗淡常駐當背景，唸到才全亮
-     p.vis=lerp(p.vis,tg,dt*2.6);setVis(p,p.vis);
-     if(p.lbl)p.lbl.material.opacity=named*Math.min(1,p.vis*1.4); // 表名只在被點到時浮現
-     if(p.group.visible){
-       const px=(k-(PN-1)/2)*2.7;                          // 等距水平排列（避免 sin 排位讓邊緣互相擠壓）
-       const depth=Math.pow((k-(PN-1)/2)/2.5,2);           // 0=中央 1=兩端
-       const pz=-5.2+depth*1.8+close*1.0+named*0.6;        // 輕微凹弧（兩端略近）＋整場逼近＋點到時再往鏡頭壓近
-       const py=4.2+Math.sin(T*0.7+k)*0.4;                 // 輕微呼吸浮動
-       p.group.position.set(px,py,pz);
-       p.group.lookAt(camera.position.x,py,camera.position.z);}}); } // 永遠面向鏡頭，表面字清楚
+  // ---- 場景3：縱深資料流（唸到的表從深處朝鏡頭飛入、停在前後交錯的深度，強透視層疊）----
+  {PANELS.forEach((p,k)=>{
+     const target=(i===2)?(N.on?lblShown[k]:smooth((ls-L3AT[k])/0.7)):0; // 是否已被旁白點到
+     p.rev=lerp(p.rev,target,dt*2.2);                      // 平滑揭示量，驅動飛入＋發亮
+     const tg=(i===2)?(0.10+0.90*p.rev):0;                 // 未唸到=遠處微弱背景，唸到=飛入全亮
+     p.vis=lerp(p.vis,tg,dt*3);setVis(p,p.vis);
+     if(p.lbl)p.lbl.material.opacity=p.rev*Math.min(1,p.vis*1.6); // 表名隨飛入浮現
+     if(p.group.visible){const S=S3POS[k];const fly=easeOut(p.rev);
+       const pz=S.z-(1-fly)*20;                            // 從 −20 深處飛到就位深度
+       const py=S.y+Math.sin(T*0.5+k)*0.25;                // 輕微呼吸
+       p.group.position.set(S.x,py,pz);
+       p.group.lookAt(camera.position.x,py,camera.position.z);}}); } // 面向鏡頭、各自深度→強透視
 
   // ---- 場景3 表名標籤（跟旁白同步） ----
   {const inS3=(i===2);for(let k=0;k<l3.length;k++)l3[k].style.opacity=inS3?(N.on?lblShown[k]:smooth((ls-L3AT[k])/0.7)).toFixed(2):'0';}
