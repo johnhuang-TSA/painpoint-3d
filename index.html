@@ -279,6 +279,8 @@ DEPT.forEach((d,i)=>{
   const lbl=makeSprite([d.n],{fs:64,color:'#0a1420',bg:cssCol[i]+'f2',h:2.7});lbl.position.set(0,9.9,0);g.add(lbl);
   d.lbl=lbl;d.actor=reg(g,1);d.pop=0.6+i*1.1;
 });
+const GRAYC=new THREE.Color(0x6f777e); // 未點名時的灰
+DEPT.forEach(d=>{d.figMats=d.actor.mats.filter(m=>!m.map);d.colObj=new THREE.Color(d.col);d.lit=0;}); // 人物本體材質(排除名牌貼圖)；lit:0=灰 1=發亮
 // 中央被傳遞的問題光點
 const qball=new THREE.Mesh(new THREE.SphereGeometry(0.42,16,16),holoMat(0x9fd8ff,0.7));
 const qglow=new THREE.Sprite(new THREE.SpriteMaterial({map:TEXG,color:0x6fc0ff,transparent:true,opacity:0.55,depthWrite:false,blending:THREE.AdditiveBlending}));
@@ -597,7 +599,7 @@ function speakNow(i){if(!N.on)return;stopN();
 // ============================================================
 //  幕進入
 // ============================================================
-function onEnter(i){if(i===2){lblShown.fill(0);s3capV=0;}if(i===1)qTarget=-1;musicScene(i);speak(i);}
+function onEnter(i){if(i===2){lblShown.fill(0);s3capV=0;}if(i===1){qTarget=-1;DEPT.forEach(d=>d.lit=0);}musicScene(i);speak(i);}
 
 // ============================================================
 //  渲染
@@ -637,22 +639,18 @@ function render(dt){
    let op=(i===0)?smooth(ls/1.2)*(1-smooth((ls-5.8)/1.0)):0;
    qMat.opacity=op*0.85;qPts.visible=op>0.01;}
 
-  // ---- 場景2：四部門 + 問題光點彈跳 + 纏線 ----
-  {const on=(i===1)?1:0;
-   DEPT.forEach((d,k)=>{let tg=0;if(i===1)tg=(ls>d.pop)?1:0;else tg=on;d.actor.vis=lerp(d.actor.vis,tg,dt*3);setVis(d.actor,easeOut(d.actor.vis));
-     if(d.actor.group.visible)d.actor.group.position.y=0.4*Math.sin(T*1.5+k);});
-   // 問題光點：跟著旁白停在被點名的部門（旁白關閉時每約 2.5 秒依序拜訪）
-   aQball.vis=lerp(aQball.vis,((i===1&&(!N.on||qTarget>=0))?1:0),dt*3);setVis(aQball,aQball.vis); // 開旁白時：唸到「倉管」（qTarget>=0）光球才出現
+  // ---- 場景2：四部門人形（一開場全顯示、不晃動；旁白點名才由灰發亮）----
+  {DEPT.forEach((d,k)=>{
+     d.actor.vis=lerp(d.actor.vis,(i===1?1:0),dt*3);const e=easeOut(d.actor.vis);setVis(d.actor,e); // 一進場四人全出現（不再依序彈入）
+     if(i===1){const ti=N.on?qTarget:Math.min(3,Math.floor(ls/2.5));d.lit=lerp(d.lit,(k<=ti?1:0),dt*4);} // 依序：被點名(k<=ti)才發亮並保持
+     if(d.actor.group.visible){const litF=0.5+0.5*d.lit;d.figMats.forEach(m=>{m.color.copy(GRAYC).lerp(d.colObj,d.lit);m.opacity=m._b*e*litF;});} // 灰→自身顏色、暗→亮（人物不做位移，保持不動）
+   });
+   // 問題光點：跟著旁白停在被點名的部門（與發亮互相呼應；旁白關閉時每約 2.5 秒依序）
+   aQball.vis=lerp(aQball.vis,((i===1&&(!N.on||qTarget>=0))?1:0),dt*3);setVis(aQball,aQball.vis);
    if(aQball.group.visible){const ti=N.on?qTarget:Math.min(3,Math.floor(ls/2.5));
      if(ti>=0&&ti<=3){const P=DEPT[ti].actor.group.position;qball.position.x=lerp(qball.position.x,P.x,dt*4);qball.position.y=lerp(qball.position.y,4.6,dt*4);qball.position.z=lerp(qball.position.z,P.z,dt*4);}
      else{qball.position.x=lerp(qball.position.x,0,dt*3);qball.position.y=lerp(qball.position.y,5,dt*3);qball.position.z=lerp(qball.position.z,2,dt*3);}}
-   // 纏線
-   lineMat.opacity=lerp(lineMat.opacity,(i===1?0.5:0),dt*2);
-   if(lineMat.opacity>0.01){let p=0;DEPT.forEach((d,k)=>{const P=d.actor.group.position;for(let s=0;s<16;s++){const f0=s/16,f1=(s+1)/16;
-     const wob=Math.sin(T*2+k*2+f0*6)*1.2*f0;
-     linePos[p++]=P.x*f0+wob;linePos[p++]=3+(P.y+ (1-f0)*1)*0+3*f0+Math.sin(T*3+k+s)*0.6;linePos[p++]=P.z*f0+wob;
-     linePos[p++]=P.x*f1+Math.sin(T*2+k*2+f1*6)*1.2*f1;linePos[p++]=3+3*f1+Math.sin(T*3+k+s+1)*0.6;linePos[p++]=P.z*f1+Math.sin(T*2+k*2+f1*6)*1.2*f1;}});
-     lineGeo.attributes.position.needsUpdate=true;}}
+   lineMat.opacity=0;} // 纏亂資料線（背景虛線）已移除
 
   // ---- 場景3：六張玻璃面板在鏡頭前排成弧形「資料牆」，逐張點亮浮現 ----
   {const close=easeOut(clamp(ls/8,0,1)); // 整場緩緩逼近（被表淹沒）
@@ -769,7 +767,7 @@ const PHN=['一句話的問題','被切成四塊','被表淹沒','數字打架',
 const tlPhasesEl=document.getElementById('tlPhases');
 const bp2=document.getElementById('btnPlay2');
 const btnCam=document.getElementById('btnCam');
-let speed=1;const SPEEDS=[1,1.5,2,0.5];let si=0;
+let speed=1;const SPEEDS=[1,1.25,1.5,2,0.5];let si=0;
 PHN.forEach((nm,i)=>{const d=document.createElement('div');d.className='ph';d.innerHTML='<div class="dot"></div><div class="pn">'+(i+1)+'. '+nm+'</div><div class="pb"><i></i></div>';d.addEventListener('click',e=>{e.stopPropagation();jumpTo(i);});tlPhasesEl.appendChild(d);});
 function jumpTo(i){const wp=started?playing:true;if(!started){begin();return;}i=clamp(i,0,DUR.length-1);t=B[i];sceneIdx=-1;playing=wp;lastTs=0;resetActors();stopN();if(camMode==='cine')gotoScene(i);render(0);} // 保留暫停狀態與自由視角
 function setCine(on){camMode=on?'cine':'free';if(on)gotoScene(sceneAt(t));btnCam.textContent=on?'🎥 電影運鏡':'🕹 自由視角';btnCam.classList.toggle('on',on);}
