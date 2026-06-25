@@ -530,8 +530,9 @@ const VO3FRAC=_frac(NARR_ZH[2],LBL3);             // 場景3：六張表
 function useVO(i){return N.on&&lang==='dori'&&VO[i]&&!VO[i].error;}
 function playClip(i){const a=VO[i];if(!a){if(N.sup)doSpeak(i);return;}N.curClip=a;N.active=true;duck();
   try{a.currentTime=0;a.playbackRate=speed;}catch(e){} // 跟隨目前速度（音檔變速、聲畫同步）
+  a._rz=0;
   clearTimeout(N.guard);N.guard=setTimeout(()=>{if(N.curClip===a){N.active=false;duck();}},40000); // 後備：音檔異常卡住時放行
-  a.onended=()=>{if(N.curClip===a){clearTimeout(N.guard);N.active=false;duck();}};
+  a.onended=()=>{if(N.curClip!==a)return;if(a.duration&&a.currentTime<a.duration-0.6&&(a._rz=a._rz+1)<=3){const pp=a.play();if(pp&&pp.catch)pp.catch(()=>{});return;} clearTimeout(N.guard);N.active=false;duck();}; // 防護：ended 在接近結尾前誤觸發就續播(最多3次)，避免旁白沒唸完就換場
   a.onerror=()=>{if(N.curClip===a){N.curClip=null;clearTimeout(N.guard);if(N.sup)doSpeak(i);else{N.active=false;duck();}}}; // 檔案缺/壞→退回 TTS
   const p=a.play();if(p&&p.catch)p.catch(()=>{});}
 function allVoices(){return N.sup?speechSynthesis.getVoices():[];}
